@@ -1,35 +1,33 @@
-# Setup
-In order to start the back- and frontend properly, some things have to be done first
+# Designing Effective Collaborative Learning Systems: Demand Forecasting in Supply Chains Using Distributed Data
 
-## Installation requirements
-### pipenv 
-virtual enviroment for the python backend (flask)
+This code is part of the paper ***Designing Effective Collaborative Learning Systems: Demand Forecasting in Supply Chains Using Distributed Data*** which is currently under review.
 
-run `$ pip install pipenv`
+## Setup
+To run the code please follow the following instruction:
+1. The simulation was run using python 3.9.6
+2. Use the _requirements.txt_ to install necessary packages
+3. Install _jupyter-notebook_
+4. Usage of NVIDA GPUs is possible, if necessary packages are installed.
 
-### Node.js 
-JavaScript runtime enviroment
+## Configuration
+The code can be configured using the _config.yaml_ file. Here the possible parameters can be set. The most important parameters described below. For all other parameters please refer to the paper or config-file.
 
-https://nodejs.org/de
+### Training_type:
+Sets the typ of training. 
+- None: a moving average forecasting is used
+- loca_multichannel: training of the architecture is done locally
+ split_multichannel: training of the architecture is done collaboratively
 
-## Installing the node modules
-Navigate to `frontend\gui`
+ ### Data_scource:
+ Here, we define how to simulate the market data. If _None_ is given, synthetic market data is generated based on the defined parameters. If a path is given, the data from that path is given. You can use the _FoodManuData1993_2024.xlsx_ as blue print for how to format your data. 
 
-run `$ npm install`
+ ## Running the Code
+ After isntalling all necessary packages and defining all parameters using the config-file, the simualtion can be started by running:
+ ```bash
+python main.py
+```
 
-# Starting the GUI
-## Starting the backend
-Open a new terminal and navigate to `backend\api`
+The result will be saved in the *Reporting-Folder*. The results raw data of the paper can be found in the folder *Results*
 
-run `$ pipenv shell`
-
-run `$ python api.py`
-
-The backend should then be running at **http://localhost:5000**
-
-## Starting the frontend
-Open a new terminal and navigate to `frontend\gui`
-
-run `$ npm run serve` - notice that this is dev-mode only
-
-the frontend should then be running at **http://localhost:8080**
+## Analyzing the Results
+We analyzed the resutls using a juypter-note book (NAME). Make sure that you can run juypter-notebooks

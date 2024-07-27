@@ -1,42 +1,42 @@
 sim:
   simulation_runs: 1
-  convergence_time: 2500 #2500  warum up
-  simulation_time: 2500 # 2500 time for simluation until training
-  training_time: 500 # 500 considered time steps for training of the models
-  testing_time: 50 # 50
-  training_type:  "local_multichannel" # None, local, split, federated, split_multichannel
-  train_size: 400 # 400
-  val_size: 50 # 50
-  epochs: 3000
-  learning_rate: 0.001
-  momentum: 0.9
-  batch_size: 32
-  sequence_length: 4 # 4
+  convergence_time: 2500 # define the warum up pahse
+  simulation_time: 2500 # define time steps to simulate after warm up until training
+  training_time: 500 # considered time steps for training of the models
+  testing_time: 50 # timesteps after training for testing 
+  training_type:  "local_multichannel" # define the training type of the system (options areNone, loca_multichannel, split_multichannel
+  train_size: 400 # define number of time steps used for training
+  val_size: 50 # define number of time steps used for validation during training
+  epochs: 3000 # define number of epochs for training
+  learning_rate: 0.001 # define learning rate
+  momentum: 0.9 # define momentum (for stoachastic gradient decent optimizer)
+  batch_size: 32 # define batch size during training
+  sequence_length: 4 # define sequence length for forecasting 
 market:
-  data_scource:  # if None, market configuration is used -> "backend/FoodManuData1993_2024.xlsx"
-  primary_demand: 1000 # 1000
-  trend_magnitude: 2 #2
-  seasonality_magnitude: 5 #2
-  seasonality_frequncy: 7 #20
-  random_walk:
-    mean: 10 #0
-    variance: 1
-  demand_split: [0.8, 0.2]
+  data_scource:  # define data used to simluate the customer demand (if None, market configuration is used -> "FoodManuData1993_2024.xlsx")
+  primary_demand: 1000 # define primary demand
+  trend_magnitude: 2 # define trend of demand (linear increase per time step)
+  seasonality_magnitude: 5 # define magnitude of seasonalitiy
+  seasonality_frequncy: 7 # define frequency of seasonalitiy
+  random_walk: # define the radonmess in the market demand
+    mean: 10 # define the mean of the randomness
+    variance: 1 # define the variance of the market demand
+  demand_split: [0.8, 0.2] # define the split of market demand among the two retailers
 supply_chain:
-  agents_per_level: [2, 3]
-  sc_levels:
+  agents_per_level: [2, 3] # define the agents per supply chain level
+  sc_levels: # define each level
     sc_level_0:
-      adjaceny_list: [[1, 1, 1],[1 , 1, 1]]
-      lead_time: 1 # constant lead time for all suppliers for simplicity
-      replenishment_strat: ["OUT", "OUT"]
-      forecasting_strat: ["MA", "MA"]
-      inv_capacity: [50000, 50000]
-      init_inv: [0, 0]
-      safety_risk_factor: [1, 1]
-      R: [1, 1]
-    sc_level_1:
+      adjaceny_list: [[1, 1, 1],[1 , 1, 1]] # define how these agents on this level are connected to the subsequent ones
+      lead_time: 1 # define elada time (constant lead time for all suppliers for simplicity)
+      replenishment_strat: ["OUT", "OUT"] # define replenishment (currently only Order-Up-To defined)
+      forecasting_strat: ["MA", "MA"] # define inital forecasting method (currently only moving average (MA) defined and set as default)
+      inv_capacity: [50000, 50000] # define inventory capacity for every agent
+      init_inv: [0, 0] # define initial inventory for every agent
+      safety_risk_factor: [1, 1] # define the risk factor for every agent
+      R: [1, 1] # define the review period of every agent
+    sc_level_1: # see above for definitions of these paramerers
       adjaceny_list: [[1], [1], [1]]
-      lead_time: 1 # constant lead time for all suppliers for simplicity
+      lead_time: 1 
       replenishment_strat: ["OUT", "OUT", "OUT"]
       forecasting_strat: ["MA", "MA", "MA"]
       inv_capacity: [10000, 100000, 10000]
