@@ -365,6 +365,6 @@ def select_least_used_gpu():
     # Set this GPU as the default device
     torch.cuda.set_device(least_used_gpu)
     device = torch.cuda.current_device()
-    print(f"Selected GPU {least_used_gpu} with usage {usage[least_used_gpu]}%")
+    logger.info(f"Selected GPU {least_used_gpu} with usage {usage[least_used_gpu]}%")
 
     return device

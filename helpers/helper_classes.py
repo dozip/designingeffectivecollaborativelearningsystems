@@ -304,7 +304,6 @@ class DataCollector():
     
     def return_raw_targets(self):
         target_arr = np.array(self.target)
-        print(target_arr.shape)
         target = target_arr.transpose()
 
         return target

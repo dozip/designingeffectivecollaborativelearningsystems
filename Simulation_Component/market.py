@@ -165,7 +165,6 @@ class MarketDataSource(Market):
 
     def split_demand_on_time(self, t):
         demand = self.get_demand(t)
-        print(demand)
         demand_list = demand * self.market_demand_split
 
         d = 0
