@@ -30,4 +30,7 @@ python main.py
 The result will be saved in the *Reporting-Folder*. The results raw data of the paper can be found in the folder *Results*
 
 ## Analyzing the Results
-We analyzed the resutls using a juypter-note book (NAME). Make sure that you can run juypter-notebooks
+We analyzed the resutls using a juypter-note book (see name below). Make sure that you can run juypter-notebooks.
+```bash
+evaluation_itegrated_Experiment.ipynb
+```
