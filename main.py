@@ -827,7 +827,7 @@ def run():
     # 1. load config
     config_path = script_directory / "config.yaml"
 
-    print("config path: ", config_path)
+    logger.debug("The configuration is loaded from: ", config_path)
 
     # 2. initalize simulation
     simulation, market, supply_chain, sc_agent_list, cfg = init_simulaltion(config_path)
@@ -843,45 +843,16 @@ def run():
         # 3.1 decide which simulation style: federated, local, None (use only MA)
         if simulation.training_type is None:
             sim_time = simulation.conv_time + simulation.sim_time + simulation.testing_time
-            print(sim_time)
             sim_start = 0
             simulation_normal(sim_start, sim_time, simulation, market, supply_chain, sc_agent_list, cfg)
             val_loss = None
-        
-        elif simulation.training_type == "SARIMA":
-            sim_time = simulation.conv_time + simulation.sim_time
-            sim_start = 0
-            simulation_normal(sim_start, sim_time, simulation, market, supply_chain, sc_agent_list, cfg)
-            val_loss = None
-            local_SARIMA(sc_agent_list, simulation.conv_time, simulation.sim_time, simulation.testing_time)
-            sim_start = sim_time
-            sim_time = simulation.conv_time + simulation.sim_time + simulation.testing_time
-            simulation_normal(sim_start, sim_time, simulation, market, supply_chain, sc_agent_list, cfg)
-
-        elif simulation.training_type == "local":
-            # run convergence to create first data set of demand from retailer
-            sim_time = simulation.conv_time + simulation.retraining_time
-            sim_start = 0
-            simulation_normal(sim_start, simulation, market, supply_chain, sc_agent_list, cfg)
-            iterations = int((simulation.sim_time - (simulation.conv_time + simulation.retraining_time)) / (simulation.retraining_time))
-
-            for iteration in range(iterations):
-                logger.info(f"Iteration Number : {iteration + 1}/{iterations}")
-                local_training(simulation, market, supply_chain, sc_agent_list, cfg)
-                simulation_normal(simulation.retraining_time, simulation, market, supply_chain, sc_agent_list, cfg)
-
-                logger.info("Measuring BWE")
-                for level in sc_agent_list:
-                    for agent in level:
-                        agent.set_variance_ratio(last_t=simulation.retraining_time)
 
         elif simulation.training_type == "local_multichannel":
 
             sim_time = simulation.conv_time + simulation.sim_time
             sim_start = 0
             simulation_normal(sim_start, sim_time, simulation, market, supply_chain, sc_agent_list, cfg)
-            iterations = int((simulation.sim_time - (simulation.conv_time + simulation.retraining_time)) / (simulation.retraining_time))
-
+        
             val_loss = local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent_list, cfg)
 
             sim_start = sim_time
@@ -893,7 +864,6 @@ def run():
             sim_time = simulation.conv_time + simulation.sim_time
             sim_start = 0
             simulation_normal(sim_start, sim_time, simulation, market, supply_chain, sc_agent_list, cfg)
-            iterations = int((simulation.sim_time - (simulation.conv_time + simulation.retraining_time)) / (simulation.retraining_time))
 
             val_loss = split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent_list, cfg)
 
@@ -902,37 +872,6 @@ def run():
             simulation_split_multichannel_lstm(sim_start, sim_time, simulation, market, supply_chain, sc_agent_list, cfg)
             # simulation_normal(sim_start, sim_time, simulation, market, supply_chain, sc_agent_list, cfg)
 
-        elif simulation.training_type == "federated":
-            # run convergence to create first data set of demand from retailer
-            sim_time = simulation.conv_time + simulation.retraining_time
-            simulation_normal(sim_time, simulation, market, supply_chain, sc_agent_list, cfg)
-            iterations = int((simulation.sim_time - (simulation.conv_time + simulation.retraining_time)) / (simulation.retraining_time))
-
-            for iteration in range(iterations):
-                logger.info(f"Iteration Number : {iteration + 1}/{iterations}")
-                federated_training(simulation, market, supply_chain, sc_agent_list, cfg)
-                simulation_normal(simulation.retraining_time, simulation, market, supply_chain, sc_agent_list, cfg)
-
-                logger.info("Measuring BWE")
-                for level in sc_agent_list:
-                    for agent in level:
-                        agent.set_variance_ratio(last_t=simulation.retraining_time)
-
-        elif simulation.training_type == "split":
-            # run convergence to create first data set of demand from retailer
-            sim_time = simulation.conv_time + simulation.retraining_time
-            simulation_normal(sim_time, simulation, market, supply_chain, sc_agent_list, cfg)
-            iterations = int((simulation.sim_time - (simulation.conv_time + simulation.retraining_time)) / (simulation.retraining_time))
-
-            for iteration in range(iterations):
-                logger.info(f"Iteration Number : {iteration + 1}/{iterations}")
-                split_training(simulation, market, supply_chain, sc_agent_list, cfg)
-                simulation_normal(simulation.retraining_time, simulation, market, supply_chain, sc_agent_list, cfg)
-
-                logger.info("Measuring BWE")
-                for level in sc_agent_list:
-                    for agent in level:
-                        agent.set_variance_ratio(last_t=simulation.retraining_time)
 
         else:
             raise NotImplementedError(" Your Option is not implemented. To fix, please chose None, \"local\" or \"federated")
