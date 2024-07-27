@@ -1,0 +1,8 @@
+check-style:
+  stage: build
+  image: python:latest
+  before_script:
+    - python3 -m pip install --upgrade pip
+    - python3 -m pip install pycodestyle
+  script:
+    - pycodestyle --max-line-length=150 --ignore=E266,W504 *.py

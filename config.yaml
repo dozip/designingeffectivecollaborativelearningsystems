@@ -1,0 +1,46 @@
+sim:
+  simulation_runs: 1
+  convergence_time: 0 #2500  warum up
+  simulation_time: 356 # 2500 time for simluation until training
+  training_time: 100 # 500 considered time steps for training of the models
+  testing_time: 20 # 1000
+  training_type:  "local_multichannel" # None, local, split, federated, split_multichannel
+  train_size: 80 # 400
+  val_size: 20 # 50
+  epochs: 3000
+  learning_rate: 0.001
+  momentum: 0.9
+  batch_size: 32
+  sequence_length: 4 # 16
+market:
+  data_scource: "FoodManuData1993_2024.xlsx"  # if None, market configuration is used -> "backend/FoodManuData1993_2024.xlsx"
+  primary_demand: 1000 # 1000
+  trend_magnitude: 2 #2
+  seasonality_magnitude: 5 #2
+  seasonality_frequncy: 7 #20
+  random_walk:
+    mean: 10 #0
+    variance: 1
+  demand_split: [0.8, 0.2]
+supply_chain:
+  agents_per_level: [2, 3]
+  sc_levels:
+    sc_level_0:
+      adjaceny_list: [[1, 1, 1],[1 , 1, 1]]
+      lead_time: 1 # constant lead time for all suppliers for simplicity
+      replenishment_strat: ["OUT", "OUT"]
+      forecasting_strat: ["MA", "MA"]
+      inv_capacity: [50000, 50000]
+      init_inv: [0, 0]
+      safety_risk_factor: [1, 1]
+      R: [1, 1]
+    sc_level_1:
+      adjaceny_list: [[1], [1], [1]]
+      lead_time: 1 # constant lead time for all suppliers for simplicity
+      replenishment_strat: ["OUT", "OUT", "OUT"]
+      forecasting_strat: ["NN", "NN", "NN"]
+      inv_capacity: [10000, 100000, 10000]
+      init_inv: [0, 0, 0]
+      safety_risk_factor: [1, 1, 1]
+      R: [1, 1, 1]
+
