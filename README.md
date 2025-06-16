@@ -3,7 +3,7 @@
 This code is part of the paper ***Designing Effective Collaborative Learning Systems: Demand Forecasting in Supply Chains Using Distributed Data*** which is currently under review.
 
 ## Setup
-To run the code please follow the following instruction:
+To run the code, please follow the following instruction:
 1. The simulation was run using python 3.9.6
 2. Use the _requirements.txt_ to install necessary packages
 3. Install _jupyter-notebook_
