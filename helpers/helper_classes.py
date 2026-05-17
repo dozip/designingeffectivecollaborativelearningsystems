@@ -375,3 +375,91 @@ class EarlyStopping:
             self.trace_func(f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
         torch.save(model.state_dict(), self.path)
         self.val_loss_min = val_loss
+
+class ChronosZeroShotForecaster(Forecasting):
+    """
+    Adapter between the Agent interface and Chronos.
+
+    This model is zero-shot only:
+    - no training
+    - no fine-tuning
+    - only inference
+    """
+
+    def __init__(
+        self,
+        pipeline,
+        prediction_length=1,
+        quantile_levels=None,
+        freq="D",
+    ) -> None:
+        super().__init__()
+        self.pipeline = pipeline
+        self.model_type = "Chronos_zeor_shot"
+        self.prediction_length = prediction_length
+        self.quantile_levels = quantile_levels or [0.5]
+        self.freq = freq
+
+    def train(self, data=None) -> None:
+        """
+        Chronos zero-shot is not trained or fine-tuned.
+        This method exists only to match the Forecasting interface.
+        """
+        pass
+
+    def predict(self, data):
+        """
+        Forecast one step ahead for each retailer/channel.
+
+        Input format from Agent:
+            data = [
+                history_channel_0,
+                history_channel_1,
+                ...
+            ]
+
+        Return format expected by Agent:
+            [
+                forecast_channel_0,
+                forecast_channel_1,
+                ...
+            ]
+        """
+
+        forecasts = []
+
+        for channel_id, history in enumerate(data):
+            history = np.asarray(history, dtype=float).flatten()
+
+            if len(history) == 0:
+                forecasts.append(0.0)
+                continue
+
+            context_df = pd.DataFrame({
+                "id": [f"channel_{channel_id}"] * len(history),
+                "timestamp": pd.date_range(
+                    start="2000-01-01",
+                    periods=len(history),
+                    freq=self.freq,
+                ),
+                "target": history,
+            })
+
+            pred_df = self.pipeline.predict_df(
+                context_df,
+                prediction_length=self.prediction_length,
+                quantile_levels=self.quantile_levels,
+                id_column="id",
+                timestamp_column="timestamp",
+                target="target",
+            )
+
+            if "predictions" in pred_df.columns:
+                forecast = pred_df["predictions"].iloc[0]
+            else:
+                median_quantile = str(self.quantile_levels[len(self.quantile_levels) // 2])
+                forecast = pred_df[median_quantile].iloc[0]
+
+            forecasts.append(float(np.round(forecast, 0)))
+
+        return forecasts
