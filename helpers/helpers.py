@@ -1,7 +1,12 @@
+import logging
 import yaml
 import json
 import subprocess
 import re
+
+import numpy as np
+import pandas as pd
+import torch
 
 from copy import deepcopy
 from datetime import datetime
@@ -11,6 +16,8 @@ from Simulation_Component.market import *
 from Simulation_Component.agent import *
 from Simulation_Component.supply_chain import *
 from Simulation_Component.simulation import Simulation
+
+logger = logging.getLogger('logger')
 
 
 def load_config(path: Path):
@@ -336,13 +343,13 @@ def reset_simulaltion_from_dict(cfg: dict) -> list[Simulation, Market, Supply_Ch
 
 
 def select_gpu():
-    if torch.backends.mps.is_available():
-        device = torch.device("mps")
-    
     if torch.cuda.is_available():
-        device = select_least_used_gpu()
+        return select_least_used_gpu()
 
-    return device
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+
+    return torch.device("cpu")
 
 def get_gpu_usage():
     # Run nvidia-smi command to get GPU usage

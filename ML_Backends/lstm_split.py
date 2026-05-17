@@ -167,8 +167,8 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
         raw_demand_data = agent.demand_by_retailer_history
 
         data = []
-        for i in range(agent.num_retailer):
-            data.append(np.array(raw_demand_data[i]))
+        for r in range(agent.num_retailer):
+            data.append(np.array(raw_demand_data[r]))
 
         df = pd.DataFrame(data).transpose()
         df_train = df.iloc[-(train_size + vall_size):-(vall_size), :]
