@@ -11,6 +11,7 @@ import matplotlib
 matplotlib.use('Agg')
 from copy import deepcopy
 from matplotlib import pyplot as plt
+from huggingface_hub import hf_hub_download
 
 from pathlib import Path
 
@@ -827,22 +828,107 @@ def attach_chronos_zero_shot_models(sc_agent_list, cfg):
     device = chronos_cfg.get("device", "cuda")
     prediction_length = chronos_cfg.get("prediction_length", 1)
     quantile_levels = chronos_cfg.get("quantile_levels", [0.5])
+    target_level = chronos_cfg.get("target_level", 1)
 
     pipeline = Chronos2Pipeline.from_pretrained(
         model_id,
         device_map=device,
     )
 
-    for level_agents in sc_agent_list:
-        for agent in level_agents:
-            agent.set_forecasting_model(
-                ChronosZeroShotForecaster(
-                    pipeline=pipeline,
-                    prediction_length=prediction_length,
-                    quantile_levels=quantile_levels,
-                )
-            )
+    logger.info(f"Chronos loaded. Attaching to level {target_level} agents.")
 
+    for j, agent in enumerate(sc_agent_list[target_level]):
+        logger.info(
+            f"Attaching Chronos to level={target_level}, "
+            f"agent_index={j}, agent_id={agent.id}, "
+            f"num_retailer={agent.num_retailer}"
+        )
+
+        agent.set_forecasting_model(
+            ChronosZeroShotForecaster(
+                pipeline=pipeline,
+                prediction_length=prediction_length,
+                quantile_levels=quantile_levels,
+            )
+        )
+
+    logger.info(f"Chronos zero-shot forecasters attached to level {target_level}.")
+
+def attach_timesfm_zero_shot_models(sc_agent_list, cfg):
+    """
+    Load TimesFM once and attach it to agents of one selected supply-chain level.
+
+    No training.
+    No fine-tuning.
+    Only inference.
+    """
+
+    import torch
+    import timesfm
+
+    timesfm_cfg = cfg.get("timesfm", {})
+
+    model_id = timesfm_cfg.get("model_id", "google/timesfm-2.5-200m-pytorch")
+    target_level = timesfm_cfg.get("target_level", 1)
+
+    prediction_length = timesfm_cfg.get("prediction_length", 1)
+    max_context = timesfm_cfg.get("max_context", 1024)
+    max_horizon = timesfm_cfg.get("max_horizon", 256)
+
+    normalize_inputs = timesfm_cfg.get("normalize_inputs", True)
+    use_continuous_quantile_head = timesfm_cfg.get("use_continuous_quantile_head", True)
+    force_flip_invariance = timesfm_cfg.get("force_flip_invariance", True)
+    infer_is_positive = timesfm_cfg.get("infer_is_positive", True)
+    fix_quantile_crossing = timesfm_cfg.get("fix_quantile_crossing", True)
+
+    logger.info(f"Loading TimesFM zero-shot model: {model_id}")
+
+    torch.set_float32_matmul_precision("high")
+
+    weights_path = hf_hub_download(
+        repo_id=model_id,
+        filename=timesfm.TimesFM_2p5_200M_torch.WEIGHTS_FILENAME,
+    )
+
+    model = timesfm.TimesFM_2p5_200M_torch(
+        torch_compile=False,
+    )
+
+    model.model.load_checkpoint(
+        weights_path,
+        torch_compile=model.torch_compile,
+    )
+
+    model.compile(
+        timesfm.ForecastConfig(
+            max_context=max_context,
+            max_horizon=max_horizon,
+            per_core_batch_size=1,
+            normalize_inputs=normalize_inputs,
+            use_continuous_quantile_head=use_continuous_quantile_head,
+            force_flip_invariance=force_flip_invariance,
+            infer_is_positive=infer_is_positive,
+            fix_quantile_crossing=fix_quantile_crossing,
+        )
+    )
+
+    logger.info(f"TimesFM loaded. Attaching to level {target_level} agents.")
+
+    for j, agent in enumerate(sc_agent_list[target_level]):
+        logger.info(
+            f"Attaching TimesFM to level={target_level}, "
+            f"agent_index={j}, agent_id={agent.id}, "
+            f"num_retailer={agent.num_retailer}"
+        )
+
+        agent.set_forecasting_model(
+            TimesFMZeroShotForecaster(
+                model=model,
+                prediction_length=prediction_length,
+            )
+        )
+
+    logger.info(f"TimesFM zero-shot forecasters attached to level {target_level}.")
 
 def run():
     np.random.seed(42)
@@ -920,9 +1006,28 @@ def run():
                 sim_time = simulation.conv_time + simulation.sim_time + simulation.testing_time
             
                 simulation_normal(sim_start,sim_time,simulation, market,supply_chain,sc_agent_list, cfg)
+            elif simulation.training_type == "TimesFM_zero_shot":
+
+                # 1. Run normal simulation first to generate historical demand data
+                sim_time = simulation.conv_time + simulation.sim_time
+                sim_start = 0
+            
+                simulation_normal(sim_start,sim_time,simulation,market,supply_chain,sc_agent_list,cfg,)
+            
+                # 2. Attach TimesFM to all agents
+                # No training, no fine-tuning
+                attach_timesfm_zero_shot_models(sc_agent_list, cfg)
+            
+                val_loss = None
+            
+                # 3. Run testing phase with TimesFM forecasts
+                sim_start = sim_time
+                sim_time = simulation.conv_time + simulation.sim_time + simulation.testing_time
+            
+                simulation_normal(sim_start,sim_time,simulation,market,supply_chain,sc_agent_list,cfg,)
 
             else:
-                raise NotImplementedError("Your option is not implemented. Choose None, ""\"local_multichannel\" or \"split_multichannel\" or \"chronos_zero_shot\".")
+                raise NotImplementedError("Your option is not implemented. Choose None, ""\"local_multichannel\" or \"split_multichannel\" or \"chronos_zero_shot\". or \"TimesFM_zero_shot\".")
 
             Reporting(path=reporting_path,timestamp=f"{timestamp}_{experiment_name}").create_reporting_multiple_runs(
                 agent_list=sc_agent_list,
