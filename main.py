@@ -23,6 +23,10 @@ from helpers.helper_classes import *
 
 from torch.utils.data import DataLoader, TensorDataset
 
+from ML_Backends import build_backend
+from ML_Backends.ma import NoOpBackend
+from Simulation_Component.runner import run_simulation_phase
+
 from datetime import datetime
 
 ### Def Logging:
@@ -936,107 +940,43 @@ def run():
 
     script_directory = Path(__file__).parent
     config_path = script_directory / "config.yaml"
-
     experiment_configs = build_experiment_configs(config_path)
-
     timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-
     reporting_path = script_directory / "Reporting"
     reporting_path.mkdir(parents=True, exist_ok=True)
 
     for experiment_id, (experiment_name, cfg) in enumerate(experiment_configs):
-
-        # Initialize once per config to read simulation.sim_runs
         simulation, market, supply_chain, sc_agent_list = reset_simulaltion_from_dict(cfg)
 
         for run_id in range(simulation.sim_runs):
-
             logger.info(f"Experiment {experiment_id + 1}/{len(experiment_configs)}: {experiment_name}")
             logger.info(f"Run {run_id + 1}/{simulation.sim_runs}")
 
             simulation, market, supply_chain, sc_agent_list = reset_simulaltion_from_dict(cfg)
+            backend = build_backend(cfg)
 
-            if simulation.training_type is None:
-                sim_time = simulation.conv_time + simulation.sim_time + simulation.testing_time
-                sim_start = 0
-                simulation_normal(sim_start, sim_time, simulation, market,supply_chain, sc_agent_list, cfg)
-                val_loss = None
+            test_end = simulation.conv_time + simulation.sim_time + simulation.testing_time
+            warmup_end = (simulation.conv_time + simulation.sim_time
+                          if backend.needs_training_phase else test_end)
 
-            elif simulation.training_type == "local_multichannel":
-                sim_time = simulation.conv_time + simulation.sim_time
-                sim_start = 0
+            # Warm-up phase: always vanilla per-agent inference, regardless of backend
+            run_simulation_phase(0, warmup_end, simulation, market,
+                                 supply_chain, sc_agent_list, NoOpBackend(cfg))
 
-                simulation_normal(sim_start, sim_time, simulation, market,supply_chain, sc_agent_list, cfg)
+            # Train (or no-op / attach)
+            val_loss = backend.train(simulation, market, supply_chain, sc_agent_list)
 
-                val_loss = local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent_list, cfg)
+            # Inference phase (skipped when warm-up already ran to the end)
+            if warmup_end < test_end:
+                run_simulation_phase(warmup_end, test_end, simulation, market,
+                                     supply_chain, sc_agent_list, backend)
 
-                sim_start = sim_time
-                sim_time = simulation.conv_time + simulation.sim_time + simulation.testing_time
-
-                simulation_normal(sim_start, sim_time, simulation, market,supply_chain, sc_agent_list, cfg)
-
-            elif simulation.training_type == "split_multichannel":
-                sim_time = simulation.conv_time + simulation.sim_time
-                sim_start = 0
-
-                simulation_normal(sim_start, sim_time, simulation, market,supply_chain, sc_agent_list, cfg)
-
-                val_loss = split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent_list, cfg)
-
-                sim_start = sim_time
-                sim_time = simulation.conv_time + simulation.sim_time + simulation.testing_time
-
-                simulation_split_multichannel_lstm(sim_start, sim_time, simulation, market,supply_chain, sc_agent_list, cfg)
-            elif simulation.training_type == "Chronos_zero_shot":
-
-                # 1. Run normal simulation first to collect demand/order history
-                sim_time = simulation.conv_time + simulation.sim_time
-                sim_start = 0
-            
-                simulation_normal(sim_start,sim_time,simulation,market,supply_chain,sc_agent_list,cfg)
-            
-                # 2. Attach pretrained Chronos model to all agents
-                # No training. No fine-tuning. No epochs.
-                attach_chronos_zero_shot_models(sc_agent_list, cfg)
-            
-                val_loss = None
-            
-                # 3. Run testing phase using Chronos only for inference
-                sim_start = sim_time
-                sim_time = simulation.conv_time + simulation.sim_time + simulation.testing_time
-            
-                simulation_normal(sim_start,sim_time,simulation, market,supply_chain,sc_agent_list, cfg)
-            elif simulation.training_type == "TimesFM_zero_shot":
-
-                # 1. Run normal simulation first to generate historical demand data
-                sim_time = simulation.conv_time + simulation.sim_time
-                sim_start = 0
-            
-                simulation_normal(sim_start,sim_time,simulation,market,supply_chain,sc_agent_list,cfg,)
-            
-                # 2. Attach TimesFM to all agents
-                # No training, no fine-tuning
-                attach_timesfm_zero_shot_models(sc_agent_list, cfg)
-            
-                val_loss = None
-            
-                # 3. Run testing phase with TimesFM forecasts
-                sim_start = sim_time
-                sim_time = simulation.conv_time + simulation.sim_time + simulation.testing_time
-            
-                simulation_normal(sim_start,sim_time,simulation,market,supply_chain,sc_agent_list,cfg,)
-
-            else:
-                raise NotImplementedError("Your option is not implemented. Choose None, ""\"local_multichannel\" or \"split_multichannel\" or \"chronos_zero_shot\". or \"TimesFM_zero_shot\".")
-
-            Reporting(path=reporting_path,timestamp=f"{timestamp}_{experiment_name}").create_reporting_multiple_runs(
-                agent_list=sc_agent_list,
-                market=market,
-                supply_chain=supply_chain,
-                cfg=cfg,
-                run_id=run_id,
-                val_loss=val_loss
+            Reporting(path=reporting_path,
+                      timestamp=f"{timestamp}_{experiment_name}").create_reporting_multiple_runs(
+                agent_list=sc_agent_list, market=market, supply_chain=supply_chain,
+                cfg=cfg, run_id=run_id, val_loss=val_loss,
             )
-            
+
+
 if __name__ == "__main__":
     run()
