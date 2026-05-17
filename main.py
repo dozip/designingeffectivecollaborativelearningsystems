@@ -818,71 +818,120 @@ def local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent_
     
     return val_loss
 
+def attach_chronos_zero_shot_models(sc_agent_list, cfg):
+    from chronos import Chronos2Pipeline
+
+    chronos_cfg = cfg.get("chronos", {})
+
+    model_id = chronos_cfg.get("model_id", "amazon/chronos-2")
+    device = chronos_cfg.get("device", "cuda")
+    prediction_length = chronos_cfg.get("prediction_length", 1)
+    quantile_levels = chronos_cfg.get("quantile_levels", [0.5])
+
+    pipeline = Chronos2Pipeline.from_pretrained(
+        model_id,
+        device_map=device,
+    )
+
+    for level_agents in sc_agent_list:
+        for agent in level_agents:
+            agent.set_forecasting_model(
+                ChronosZeroShotForecaster(
+                    pipeline=pipeline,
+                    prediction_length=prediction_length,
+                    quantile_levels=quantile_levels,
+                )
+            )
+
 
 def run():
     np.random.seed(42)
     random.seed(42)
-    script_directory = Path(__file__).parent
 
-    # 1. load config
+    script_directory = Path(__file__).parent
     config_path = script_directory / "config.yaml"
 
-    logger.debug("The configuration is loaded from: ", config_path)
+    experiment_configs = build_experiment_configs(config_path)
 
-    # 2. initalize simulation
-    simulation, market, supply_chain, sc_agent_list, cfg = init_simulaltion(config_path)
-
-    # 3 run simulation
     timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 
-    for run in range(simulation.sim_runs):
+    reporting_path = script_directory / "Reporting"
+    reporting_path.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"Iteration Number : {run + 1}/{simulation.sim_runs}")
+    for experiment_id, (experiment_name, cfg) in enumerate(experiment_configs):
+
+        # Initialize once per config to read simulation.sim_runs
         simulation, market, supply_chain, sc_agent_list = reset_simulaltion_from_dict(cfg)
 
-        # 3.1 decide which simulation style: federated, local, None (use only MA)
-        if simulation.training_type is None:
-            sim_time = simulation.conv_time + simulation.sim_time + simulation.testing_time
-            sim_start = 0
-            simulation_normal(sim_start, sim_time, simulation, market, supply_chain, sc_agent_list, cfg)
-            val_loss = None
+        for run_id in range(simulation.sim_runs):
 
-        elif simulation.training_type == "local_multichannel":
+            logger.info(f"Experiment {experiment_id + 1}/{len(experiment_configs)}: {experiment_name}")
+            logger.info(f"Run {run_id + 1}/{simulation.sim_runs}")
 
-            sim_time = simulation.conv_time + simulation.sim_time
-            sim_start = 0
-            simulation_normal(sim_start, sim_time, simulation, market, supply_chain, sc_agent_list, cfg)
-        
-            val_loss = local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent_list, cfg)
+            simulation, market, supply_chain, sc_agent_list = reset_simulaltion_from_dict(cfg)
 
-            sim_start = sim_time
-            sim_time = simulation.conv_time + simulation.sim_time + simulation.testing_time
-            simulation_normal(sim_start, sim_time, simulation, market, supply_chain, sc_agent_list, cfg)
-        
-        elif simulation.training_type == "split_multichannel":
+            if simulation.training_type is None:
+                sim_time = simulation.conv_time + simulation.sim_time + simulation.testing_time
+                sim_start = 0
+                simulation_normal(sim_start, sim_time, simulation, market,supply_chain, sc_agent_list, cfg)
+                val_loss = None
 
-            sim_time = simulation.conv_time + simulation.sim_time
-            sim_start = 0
-            simulation_normal(sim_start, sim_time, simulation, market, supply_chain, sc_agent_list, cfg)
+            elif simulation.training_type == "local_multichannel":
+                sim_time = simulation.conv_time + simulation.sim_time
+                sim_start = 0
 
-            val_loss = split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent_list, cfg)
+                simulation_normal(sim_start, sim_time, simulation, market,supply_chain, sc_agent_list, cfg)
 
-            sim_start = sim_time
-            sim_time = simulation.conv_time + simulation.sim_time + simulation.testing_time
-            simulation_split_multichannel_lstm(sim_start, sim_time, simulation, market, supply_chain, sc_agent_list, cfg)
-            # simulation_normal(sim_start, sim_time, simulation, market, supply_chain, sc_agent_list, cfg)
+                val_loss = local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent_list, cfg)
 
+                sim_start = sim_time
+                sim_time = simulation.conv_time + simulation.sim_time + simulation.testing_time
 
-        else:
-            raise NotImplementedError(" Your Option is not implemented. To fix, please chose None, \"local\" or \"federated")
+                simulation_normal(sim_start, sim_time, simulation, market,supply_chain, sc_agent_list, cfg)
 
-        # 4. create reporting
-        reporting_path = script_directory / "Reporting"
-        reporting_path.mkdir(parents=True, exist_ok=True)
-        # Reporting(path="./Reporting").create_reporting(agent_list=sc_agent_list, market=market, supply_chain=supply_chain, cfg=cfg)
-        Reporting(path= reporting_path, timestamp=timestamp).create_reporting_multiple_runs(agent_list=sc_agent_list,
-                                                                                          market=market, supply_chain=supply_chain,
-                                                                                          cfg=cfg, run_id=run, val_loss = val_loss)
+            elif simulation.training_type == "split_multichannel":
+                sim_time = simulation.conv_time + simulation.sim_time
+                sim_start = 0
 
+                simulation_normal(sim_start, sim_time, simulation, market,supply_chain, sc_agent_list, cfg)
+
+                val_loss = split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent_list, cfg)
+
+                sim_start = sim_time
+                sim_time = simulation.conv_time + simulation.sim_time + simulation.testing_time
+
+                simulation_split_multichannel_lstm(sim_start, sim_time, simulation, market,supply_chain, sc_agent_list, cfg)
+            elif simulation.training_type == "Chronos_zero_shot":
+
+                # 1. Run normal simulation first to collect demand/order history
+                sim_time = simulation.conv_time + simulation.sim_time
+                sim_start = 0
+            
+                simulation_normal(sim_start,sim_time,simulation,market,supply_chain,sc_agent_list,cfg)
+            
+                # 2. Attach pretrained Chronos model to all agents
+                # No training. No fine-tuning. No epochs.
+                attach_chronos_zero_shot_models(sc_agent_list, cfg)
+            
+                val_loss = None
+            
+                # 3. Run testing phase using Chronos only for inference
+                sim_start = sim_time
+                sim_time = simulation.conv_time + simulation.sim_time + simulation.testing_time
+            
+                simulation_normal(sim_start,sim_time,simulation, market,supply_chain,sc_agent_list, cfg)
+
+            else:
+                raise NotImplementedError("Your option is not implemented. Choose None, ""\"local_multichannel\" or \"split_multichannel\" or \"chronos_zero_shot\".")
+
+            Reporting(path=reporting_path,timestamp=f"{timestamp}_{experiment_name}").create_reporting_multiple_runs(
+                agent_list=sc_agent_list,
+                market=market,
+                supply_chain=supply_chain,
+                cfg=cfg,
+                run_id=run_id,
+                val_loss=val_loss
+            )
+            
 if __name__ == "__main__":
     run()
