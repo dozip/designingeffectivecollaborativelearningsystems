@@ -463,3 +463,66 @@ class ChronosZeroShotForecaster(Forecasting):
             forecasts.append(float(np.round(forecast, 0)))
 
         return forecasts
+
+class TimesFMZeroShotForecaster(Forecasting):
+    def __init__(self, model, prediction_length=1):
+        self.model = model
+        self.prediction_length = prediction_length
+
+    def predict(self, data):
+        """
+        data is a list of 1D arrays:
+            [
+                history_for_retailer_0,
+                history_for_retailer_1,
+                ...
+            ]
+
+        For your config, level-1 agents should pass 2 series,
+        each with sequence_length=4 values.
+        """
+
+        inputs = []
+
+        for channel in data:
+            arr = np.asarray(channel, dtype=np.float32).reshape(-1)
+
+            if arr.size == 0:
+                arr = np.array([0.0], dtype=np.float32)
+
+            inputs.append(arr)
+
+        # Store this BEFORE calling TimesFM.
+        expected_num_series = len(inputs)
+
+        # Pass a copy so TimesFM cannot mutate the list we use for checking.
+        forecast_inputs = [arr.copy() for arr in inputs]
+
+        #print("before forecast:", len(inputs))
+
+        point_forecast, quantile_forecast = self.model.forecast(
+            inputs=inputs,
+            horizon=self.prediction_length,
+        )
+        
+        #print("after forecast:", len(inputs))
+        #print("point_forecast.shape:", np.asarray(point_forecast).shape)
+
+        point_forecast = np.asarray(point_forecast)
+
+        if point_forecast.ndim == 1:
+            point_forecast = point_forecast.reshape(1, -1)
+
+        if point_forecast.shape[0] != expected_num_series:
+            raise ValueError(
+                f"TimesFM returned {point_forecast.shape[0]} forecast series, "
+                f"but Agent passed {expected_num_series} input series. "
+                f"Original data lengths={[len(np.asarray(x).reshape(-1)) for x in data]}. "
+                f"point_forecast.shape={point_forecast.shape}"
+            )
+
+        forecasts = []
+        for channel_id in range(expected_num_series):
+            forecasts.append(float(point_forecast[channel_id, 0]))
+
+        return forecasts
