@@ -30,9 +30,11 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = [
+only-include = [
     "helpers",
     "ML_Backends",
     "ML_Models",
     "Simulation_Component",
+    "main.py",
+    "config.yaml",
 ]
