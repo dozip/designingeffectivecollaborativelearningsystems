@@ -73,10 +73,10 @@ class LSTMSplitBackend(ForecastingBackend):
         # 2) inference
         # 2.1) get output lstm
         output_lstm_list = []
-        num_ret_prev = 0
+        retailer_offset = 0
         for k, agent in enumerate(level_agents):
-            data = np.array(datasets[(k + num_ret_prev):(k + num_ret_prev + agent.num_retailer)])
-            num_ret_prev += 1
+            data = np.array(datasets[retailer_offset:(retailer_offset + agent.num_retailer)])
+            retailer_offset += agent.num_retailer
 
             agent_lstm = agent.get_forecasting_model().lstm_model
 
