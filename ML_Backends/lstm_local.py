@@ -81,11 +81,10 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
 
         # build dataset and dataloader for training of agents defined
         raw_demand_data = agent.demand_by_retailer_history
-        print(len(raw_demand_data))
+        logger.debug("Raw demand data length: %s", len(raw_demand_data))
 
         data = []
-        print("Num Retailer")
-        print(agent.num_retailer)
+        logger.debug("Num Retailer: %s", agent.num_retailer)
         for j in range(agent.num_retailer):
             data.append(np.array(raw_demand_data[j]))
 
