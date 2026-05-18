@@ -318,10 +318,8 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
         val_loss_list.append(val_loss_agent)
 
     # Convert to a NumPy array
-    print(len(val_loss_list))
-    print(len(val_loss_list[0]))
-    print(len(val_loss_list[1]))
-    print(len(val_loss_list[2]))
+    logger.debug(f"Number of validation loss series: {len(val_loss_list)}")
+    logger.debug(f"Validation loss lengths per agent: {[len(losses) for losses in val_loss_list]}")
     val_loss = np.array(val_loss_list)
 
     # Sum over columns
