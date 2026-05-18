@@ -110,7 +110,7 @@ class LSTMSplitBackend(ForecastingBackend):
 
 
 def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent_list, cfg):
-    logger.info("Starting Syncron Training")
+    logger.info("Starting Synchronous Training")
     loss_cal = "aggregated"  # individual or aggregated
     loss_fn = nn.L1Loss()
     device = select_gpu()
