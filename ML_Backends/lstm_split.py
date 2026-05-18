@@ -40,7 +40,17 @@ class LSTMSplitBackend(ForecastingBackend):
         return 1
 
     def collaborative_predict(self, level_agents, demand_t, sc_agent_list, t) -> list:
-        device = torch.device("cuda")
+        device = None
+        for agent in level_agents:
+            agent_lstm = agent.get_forecasting_model().lstm_model
+            if agent_lstm:
+                try:
+                    device = next(agent_lstm[0].parameters()).device
+                except StopIteration:
+                    device = None
+                break
+        if device is None:
+            device = select_gpu()
 
         # 1) build features
         datasets = []
