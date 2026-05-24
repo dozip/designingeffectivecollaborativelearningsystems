@@ -329,7 +329,7 @@ class EarlyStopping:
         self.counter = 0
         self.best_score = None
         self.early_stop = False
-        self.val_loss_min = np.Inf
+        self.val_loss_min = np.inf
         self.delta = delta
         self.path = path
         self.trace_func = trace_func
@@ -375,3 +375,154 @@ class EarlyStopping:
             self.trace_func(f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
         torch.save(model.state_dict(), self.path)
         self.val_loss_min = val_loss
+
+class ChronosZeroShotForecaster(Forecasting):
+    """
+    Adapter between the Agent interface and Chronos.
+
+    This model is zero-shot only:
+    - no training
+    - no fine-tuning
+    - only inference
+    """
+
+    def __init__(
+        self,
+        pipeline,
+        prediction_length=1,
+        quantile_levels=None,
+        freq="D",
+    ) -> None:
+        super().__init__()
+        self.pipeline = pipeline
+        self.model_type = "Chronos_zeor_shot"
+        self.prediction_length = prediction_length
+        self.quantile_levels = quantile_levels or [0.5]
+        self.freq = freq
+
+    def train(self, data=None) -> None:
+        """
+        Chronos zero-shot is not trained or fine-tuned.
+        This method exists only to match the Forecasting interface.
+        """
+        pass
+
+    def predict(self, data):
+        """
+        Forecast one step ahead for each retailer/channel.
+
+        Input format from Agent:
+            data = [
+                history_channel_0,
+                history_channel_1,
+                ...
+            ]
+
+        Return format expected by Agent:
+            [
+                forecast_channel_0,
+                forecast_channel_1,
+                ...
+            ]
+        """
+
+        forecasts = []
+
+        for channel_id, history in enumerate(data):
+            history = np.asarray(history, dtype=float).flatten()
+
+            if len(history) == 0:
+                forecasts.append(0.0)
+                continue
+
+            context_df = pd.DataFrame({
+                "id": [f"channel_{channel_id}"] * len(history),
+                "timestamp": pd.date_range(
+                    start="2000-01-01",
+                    periods=len(history),
+                    freq=self.freq,
+                ),
+                "target": history,
+            })
+
+            pred_df = self.pipeline.predict_df(
+                context_df,
+                prediction_length=self.prediction_length,
+                quantile_levels=self.quantile_levels,
+                id_column="id",
+                timestamp_column="timestamp",
+                target="target",
+            )
+
+            if "predictions" in pred_df.columns:
+                forecast = pred_df["predictions"].iloc[0]
+            else:
+                median_quantile = str(self.quantile_levels[len(self.quantile_levels) // 2])
+                forecast = pred_df[median_quantile].iloc[0]
+
+            forecasts.append(float(np.round(forecast, 0)))
+
+        return forecasts
+
+class TimesFMZeroShotForecaster(Forecasting):
+    def __init__(self, model, prediction_length=1):
+        self.model = model
+        self.prediction_length = prediction_length
+
+    def predict(self, data):
+        """
+        data is a list of 1D arrays:
+            [
+                history_for_retailer_0,
+                history_for_retailer_1,
+                ...
+            ]
+
+        For your config, level-1 agents should pass 2 series,
+        each with sequence_length=4 values.
+        """
+
+        inputs = []
+
+        for channel in data:
+            arr = np.asarray(channel, dtype=np.float32).reshape(-1)
+
+            if arr.size == 0:
+                arr = np.array([0.0], dtype=np.float32)
+
+            inputs.append(arr)
+
+        # Store this BEFORE calling TimesFM.
+        expected_num_series = len(inputs)
+
+        # Pass a copy so TimesFM cannot mutate the list we use for checking.
+        forecast_inputs = [arr.copy() for arr in inputs]
+
+        #print("before forecast:", len(inputs))
+
+        point_forecast, quantile_forecast = self.model.forecast(
+            inputs=inputs,
+            horizon=self.prediction_length,
+        )
+        
+        #print("after forecast:", len(inputs))
+        #print("point_forecast.shape:", np.asarray(point_forecast).shape)
+
+        point_forecast = np.asarray(point_forecast)
+
+        if point_forecast.ndim == 1:
+            point_forecast = point_forecast.reshape(1, -1)
+
+        if point_forecast.shape[0] != expected_num_series:
+            raise ValueError(
+                f"TimesFM returned {point_forecast.shape[0]} forecast series, "
+                f"but Agent passed {expected_num_series} input series. "
+                f"Original data lengths={[len(np.asarray(x).reshape(-1)) for x in data]}. "
+                f"point_forecast.shape={point_forecast.shape}"
+            )
+
+        forecasts = []
+        for channel_id in range(expected_num_series):
+            forecasts.append(float(point_forecast[channel_id, 0]))
+
+        return forecasts

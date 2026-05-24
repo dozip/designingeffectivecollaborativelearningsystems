@@ -1,0 +1,40 @@
+[project]
+name = "collaborative-learning-systems"
+version = "0.1.0"
+description = "Designing Effective Collaborative Learning Systems for Supply Chain Forecasting"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "ipython>=8.12",
+    "matplotlib>=3.8",
+    "numpy>=1.26,<2",
+    "openpyxl>=3.1",
+    "pandas>=2.1",
+    "PyYAML>=6.0",
+    "scikit-learn>=1.6",
+    "scipy>=1.11",
+    "seaborn>=0.13",
+    "torch>=2.3",
+    "chronos-forecasting>=2.0",
+    "huggingface_hub",
+    "timesfm[torch] @ git+https://github.com/google-research/timesfm.git",
+]
+
+[project.scripts]
+run-sim = "main:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+only-include = [
+    "helpers",
+    "ML_Backends",
+    "ML_Models",
+    "Simulation_Component",
+    "main.py",
+    "config.yaml",
+]

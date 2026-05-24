@@ -1,14 +1,23 @@
+import logging
 import yaml
 import json
 import subprocess
 import re
 
+import numpy as np
+import pandas as pd
+import torch
+
+from copy import deepcopy
+from datetime import datetime
 from pathlib import Path
 
 from Simulation_Component.market import *
 from Simulation_Component.agent import *
 from Simulation_Component.supply_chain import *
 from Simulation_Component.simulation import Simulation
+
+logger = logging.getLogger('logger')
 
 
 def load_config(path: Path):
@@ -334,13 +343,13 @@ def reset_simulaltion_from_dict(cfg: dict) -> list[Simulation, Market, Supply_Ch
 
 
 def select_gpu():
-    if torch.backends.mps.is_available():
-        device = torch.device("mps")
-    
     if torch.cuda.is_available():
-        device = select_least_used_gpu()
+        return select_least_used_gpu()
 
-    return device
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+
+    return torch.device("cpu")
 
 def get_gpu_usage():
     # Run nvidia-smi command to get GPU usage
@@ -368,3 +377,43 @@ def select_least_used_gpu():
     logger.info(f"Selected GPU {least_used_gpu} with usage {usage[least_used_gpu]}%")
 
     return device
+
+
+def deep_update(base: dict, overrides: dict) -> dict:
+    for key, value in overrides.items():
+        if (
+            isinstance(value, dict)
+            and key in base
+            and isinstance(base[key], dict)
+        ):
+            deep_update(base[key], value)
+        else:
+            base[key] = value
+    return base
+
+
+def build_experiment_configs(config_path: Path):
+    with open(config_path, "r") as file:
+        base_cfg = yaml.safe_load(file)
+
+    experiments = base_cfg.pop("experiments", None)
+
+    if not experiments:
+        return [("default", base_cfg)]
+
+    experiment_configs = []
+
+    for experiment in experiments:
+        name = experiment["name"]
+        overrides = experiment.get("overrides", {})
+
+        cfg = deepcopy(base_cfg)
+        cfg = deep_update(cfg, overrides)
+
+        # Optional, but useful for reporting/debugging
+        cfg.setdefault("meta", {})
+        cfg["meta"]["experiment_name"] = name
+
+        experiment_configs.append((name, cfg))
+
+    return experiment_configs
