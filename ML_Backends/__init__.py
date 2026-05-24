@@ -30,4 +30,5 @@ from . import lstm_local   # noqa: F401, E402
 from . import lstm_split   # noqa: F401, E402
 from . import chronos      # noqa: F401, E402
 from . import timesfm      # noqa: F401, E402
-from . import split_timemixer_option_d_backend
+from . import timemixer_split
+from . import timemixer_local 
