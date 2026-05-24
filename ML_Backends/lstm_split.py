@@ -207,7 +207,7 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
     val_loss = []
     # train over every epoch
     for epoch in range(epochs):
-        logger.info(f"Number Epoch: {epoch}")
+        logger.debug(f"Number Epoch: {epoch}")
         # go over every batch
         for batches in zip(*trainloaders):
             logger.debug("New Batch")
@@ -328,7 +328,7 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
                 for optimizer in dense_optim:
                     optimizer.step()
 
-        logger.info(f"The Training-Loss was: {training_loss_epoch}")
+        logger.debug(f"The Training-Loss was: {training_loss_epoch}")
 
         ######################
         ##### Validation #####
@@ -405,8 +405,8 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
             sum_val_loss = np.sum(loss_list_item)
             val_loss.append(sum_val_loss)
 
-            logger.info(f"validation_loss_sum: {sum_val_loss}")
-            logger.info(f"validation_loss_per_agent: {loss_list_item}")
+            logger.debug(f"validation_loss_sum: {sum_val_loss}")
+            logger.debug(f"validation_loss_per_agent: {loss_list_item}")
 
             # ceck for early stopping
             early_stopping(sum_val_loss, agent_models)

@@ -943,7 +943,7 @@ def _train_split_timemixer_option_d(simulation, market, supply_chain, sc_agent_l
             val_loss_sum = float(np.sum(val_losses_per_agent))
             val_loss_history.append(val_loss_sum)
 
-        logger.info(
+        logger.debug(
             "Epoch %03d | train_loss=%.6f | train_per_group=%s | val_sum=%.6f | val_per_agent=%s",
             epoch,
             train_loss,
