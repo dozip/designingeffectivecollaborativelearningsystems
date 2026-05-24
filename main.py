@@ -225,61 +225,27 @@ def compact_value_for_path(value) -> str:
     return safe_experiment_name(text)
 
 
-def build_experiment_folder_name(experiment_name: str, cfg: dict) -> str:
+
+
+def get_experiment_dashboard_values(cfg: dict) -> dict:
     """
-    Final experiment folder format:
-        <experiment_name>__<training_type>_Freq_<freq>_noise_<noise>_lead_<lead>
+    Extract values that should be shown in the CLI dashboard.
 
-    Values are read from the concrete, already merged experiment config returned
-    by build_experiment_configs(config_path). This means experiment-specific
-    overrides are included.
-
-    For your YAML specifically:
+    For your YAML:
         frequency -> market.seasonality_frequncy
         noise     -> market.random_walk.variance
-        lead      -> supply_chain.sc_levels.*.lead_time
+        lead_time -> supply_chain.sc_levels.*.lead_time
     """
-    training_type = cfg.get("sim", {}).get("training_type", None)
-
-    if training_type is None:
-        training_type = experiment_name
-
-    # Your config uses the misspelled key seasonality_frequncy, so it must be
-    # checked explicitly before using generic recursive fallback matching.
     freq = first_existing_cfg_path(
         cfg,
         paths=[
             ["market", "seasonality_frequncy"],
             ["market", "seasonality_frequency"],
             ["market", "frequency"],
-            ["market", "demand_frequency"],
-            ["market", "forecast_frequency"],
-            ["sim", "frequency"],
         ],
-        default=None,
+        default="NA",
     )
 
-    if freq is None:
-        freq = find_cfg_value(
-            cfg,
-            candidate_keys=[
-                "seasonality_frequncy",
-                "seasonality_frequency",
-                "freq",
-                "frequency",
-                "frequence",
-                "demand_frequency",
-                "forecast_frequency",
-                "forecasting_frequency",
-                "order_frequency",
-                "review_frequency",
-            ],
-            default="NA",
-        )
-
-    # Your config has no literal key called noise. The noise-level parameter is
-    # market.random_walk.variance. Keep this exact path first so it does not get
-    # missed or confused with unrelated generic keys.
     noise = first_existing_cfg_path(
         cfg,
         paths=[
@@ -288,55 +254,29 @@ def build_experiment_folder_name(experiment_name: str, cfg: dict) -> str:
             ["market", "random_walk", "sigma"],
             ["market", "noise_level"],
             ["market", "noise"],
-            ["market", "demand_noise"],
-            ["market", "forecast_noise"],
-            ["sim", "noise_level"],
-            ["sim", "noise"],
         ],
-        default=None,
+        default="NA",
     )
 
-    if noise is None:
-        noise = find_cfg_value(
-            cfg,
-            candidate_keys=[
-                "noise",
-                "noise_level",
-                "demand_noise",
-                "forecast_noise",
-                "sigma",
-                "std",
-                "std_noise",
-                "standard_deviation",
-            ],
-            default="NA",
-        )
+    lead_time = get_supply_chain_lead_value(cfg, default="NA")
 
-    lead = get_supply_chain_lead_value(cfg, default=None)
+    return {
+        "freq": compact_value_for_path(freq),
+        "noise": compact_value_for_path(noise),
+        "lead_time": compact_value_for_path(lead_time),
+    }
+def build_experiment_folder_name(experiment_name: str, cfg: dict) -> str:
+    """
+    Final experiment folder format:
+        <experiment_name>
 
-    if lead is None:
-        lead = find_cfg_value(
-            cfg,
-            candidate_keys=[
-                "lead_time",
-                "leadtime",
-                "delivery_delay",
-                "transport_delay",
-            ],
-            default="NA",
-        )
+    Example:
+        timesfm_zero_shot_001
 
-    experiment_name_part = compact_value_for_path(experiment_name)
-
-    folder_name = (
-        f"{experiment_name_part}__"
-        f"{compact_value_for_path(training_type)}"
-        f"_Freq_{compact_value_for_path(freq)}"
-        f"_noise_{compact_value_for_path(noise)}"
-        f"_lead_{compact_value_for_path(lead)}"
-    )
-
-    return safe_experiment_name(folder_name)
+    The frequency/noise/lead_time values are shown in the CLI dashboard,
+    not duplicated in the folder name.
+    """
+    return safe_experiment_name(experiment_name)
 
 def save_config_once(experiment_reporting_path: Path, cfg: dict):
     """
@@ -915,11 +855,15 @@ def render_dashboard(
         print("Currently running:")
         for pid, info in active_processes.items():
             job = info["job"]
+            run_id_label = job.get("run_id_label", f"run_{job['run_id']}")
             print(
                 f"  PID {pid} | "
                 f"{job.get('training_type')} | "
                 f"{job['experiment_name']} | "
-                f"run {job['run_id']} | "
+                f"{run_id_label} | "
+                f"freq={job.get('freq', 'NA')} | "
+                f"noise={job.get('noise', 'NA')} | "
+                f"lead_time={job.get('lead_time', 'NA')} | "
                 f"GPU {info['gpu_id']}"
             )
     else:
@@ -1053,7 +997,7 @@ def run_single_experiment(
     # Reporting/
     #   <parent timestamp>/
     #     reporting_overview.csv
-    #     <experiment_name>__<training_type>_Freq_<freq>_noise_<noise>_lead_<lead>/
+    #     <experiment_name>/
     #       config.json
     #       BEW_measures.csv
     #       run_0/
@@ -1218,12 +1162,17 @@ def collect_finished_processes(
             if active_gpu_jobs[gpu_id] == 0:
                 del active_gpu_jobs[gpu_id]
 
+        run_id_label = job.get("run_id_label", f"run_{job['run_id']}")
+
         if process.exitcode != 0:
             failed_jobs.append(info)
             last_event = (
                 f"FAILED {job.get('training_type')} | "
                 f"{job['experiment_name']} | "
-                f"run {job['run_id']} | "
+                f"{run_id_label} | "
+                f"freq={job.get('freq', 'NA')} | "
+                f"noise={job.get('noise', 'NA')} | "
+                f"lead_time={job.get('lead_time', 'NA')} | "
                 f"exitcode={process.exitcode}"
             )
         else:
@@ -1231,7 +1180,10 @@ def collect_finished_processes(
             last_event = (
                 f"Finished {job.get('training_type')} | "
                 f"{job['experiment_name']} | "
-                f"run {job['run_id']}"
+                f"{run_id_label} | "
+                f"freq={job.get('freq', 'NA')} | "
+                f"noise={job.get('noise', 'NA')} | "
+                f"lead_time={job.get('lead_time', 'NA')}"
             )
 
         del active_processes[pid]
@@ -1253,10 +1205,15 @@ def terminate_all_active_processes(active_processes: dict):
         process = info["process"]
 
         if process.is_alive():
+            job = info["job"]
+            run_id_label = job.get("run_id_label", f"run_{job['run_id']}")
             print(
                 f"Terminating PID {pid}: "
-                f"{info['job']['experiment_name']} "
-                f"run {info['job']['run_id']}, "
+                f"{job['experiment_name']} "
+                f"{run_id_label}, "
+                f"freq={job.get('freq', 'NA')}, "
+                f"noise={job.get('noise', 'NA')}, "
+                f"lead_time={job.get('lead_time', 'NA')}, "
                 f"GPU={info['gpu_id']}"
             )
             process.terminate()
@@ -1419,10 +1376,15 @@ def run_load_balanced(
                 if gpu_id is not None:
                     active_gpu_jobs[gpu_id] = active_gpu_jobs.get(gpu_id, 0) + 1
 
+                run_id_label = job.get("run_id_label", f"run_{job['run_id']}")
+
                 last_event = (
                     f"Started {job.get('training_type')} | "
                     f"{job['experiment_name']} | "
-                    f"run {job['run_id']} | "
+                    f"{run_id_label} | "
+                    f"freq={job.get('freq', 'NA')} | "
+                    f"noise={job.get('noise', 'NA')} | "
+                    f"lead_time={job.get('lead_time', 'NA')} | "
                     f"PID {process.pid} | "
                     f"GPU {gpu_id}"
                 )
@@ -1439,7 +1401,7 @@ def run_load_balanced(
                     last_event=last_event,
                 )
 
-                time.sleep(2)
+                time.sleep(10)
 
                 cpu_usage = psutil.cpu_percent(interval=0.1)
                 ram_usage = psutil.virtual_memory().percent
@@ -1486,7 +1448,10 @@ def run_load_balanced(
             failed_names = [
                 (
                     f"{info['job']['experiment_name']} "
-                    f"run {info['job']['run_id']} "
+                    f"{info['job'].get('run_id_label', f"run_{info['job']['run_id']}")} "
+                    f"freq={info['job'].get('freq', 'NA')} "
+                    f"noise={info['job'].get('noise', 'NA')} "
+                    f"lead_time={info['job'].get('lead_time', 'NA')} "
                     f"exitcode={info['process'].exitcode}"
                 )
                 for info in failed_jobs
@@ -1507,7 +1472,8 @@ def run_load_balanced(
 
 def run():
     script_directory = Path(__file__).parent
-    config_path = script_directory / "config.yaml"
+    # config_path = script_directory / "config.yaml"
+    config_path = script_directory / "final_full_factorial_config_compact_names.yaml"
 
     experiment_configs = build_experiment_configs(config_path)
 
@@ -1523,18 +1489,34 @@ def run():
         training_type = cfg["sim"].get("training_type", None)
         needs_gpu = cfg_needs_gpu(cfg)
 
-        for run_id in range(sim_runs):
+        dashboard_values = get_experiment_dashboard_values(cfg)
+
+        for run_number in range(sim_runs):
+            run_id_label = f"run_{run_number}"
+
             jobs.append(
                 {
                     "experiment_id": experiment_id,
                     "total_experiments": len(experiment_configs),
                     "experiment_name": experiment_name,
                     "cfg": cfg,
-                    "run_id": run_id,
+
+                    # Keep this numeric.
+                    # It is used for seeds and Reporting.
+                    "run_id": run_number,
+
+                    # Use this for CLI/dashboard display.
+                    "run_id_label": run_id_label,
+
                     "timestamp": timestamp,
                     "reporting_path": reporting_path,
                     "training_type": training_type,
                     "needs_gpu": needs_gpu,
+
+                    # Dashboard fields.
+                    "freq": dashboard_values["freq"],
+                    "noise": dashboard_values["noise"],
+                    "lead_time": dashboard_values["lead_time"],
                 }
             )
 
@@ -1542,7 +1524,7 @@ def run():
         jobs=jobs,
 
         # Total number of simultaneous experiment processes.
-        max_parallel_processes=32,
+        max_parallel_processes=18,
 
         # New jobs only start if CPU/RAM are below these thresholds.
         max_cpu_usage=75.0,
@@ -1554,14 +1536,13 @@ def run():
         # New GPU jobs only start if GPU memory usage is below this fraction.
         max_gpu_memory_usage=0.85,
 
-        # With 3 GPUs and max_jobs_per_gpu=4, this allows up to 12 GPU jobs.
+        # With 3 GPUs and max_jobs_per_gpu=8, this allows up to 24 GPU jobs.
         # For heavy ML training, reduce this to 1.
-        max_jobs_per_gpu=8,
+        max_jobs_per_gpu=6,
 
         # Scheduler check interval.
         poll_seconds=1.0,
     )
-
 
 if __name__ == "__main__":
     run()
