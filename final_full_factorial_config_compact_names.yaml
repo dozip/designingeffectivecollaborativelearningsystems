@@ -1,0 +1,2960 @@
+# =============================================================================
+# README
+# =============================================================================
+#
+# This config file supports multiple experiment configurations.
+#
+# The base configuration is defined in the normal sections:
+#
+#   sim:
+#   market:
+#   supply_chain:
+#
+# The experiments section at the bottom defines which configurations are executed.
+#
+# Important idea:
+#
+#   simulation_runs = repeated runs of the same configuration
+#   experiments      = different configurations/scenarios
+#
+# This file contains a full factorial experiment grid:
+#
+#   7 training types
+#   3 seasonality frequencies: 7, 15, 30
+#   3 noise levels: 0, 10, 100
+#   3 lead times: 1, 2, 3
+#
+# Total:
+#
+#   7 * 3 * 3 * 3 = 189 experiments
+#
+# Experiment names intentionally do not include parameter values because the
+# experiment name is used for folder creation. The parameter values are stored
+# only in the overrides. For CLI/dashboard rendering and run IDs, derive:
+#
+#   training_type           from sim.training_type
+#   seasonality_frequncy    from market.seasonality_frequncy
+#   noise                   from market.random_walk.variance
+#   lead_time               from supply_chain.sc_levels.*.lead_time
+#
+# =============================================================================
+
+
+sim:
+  simulation_runs: 5
+  convergence_time: 2500 # define the warm up phase
+  simulation_time: 2500 # define time steps to simulate after warm up until training
+  training_time: 500 # considered time steps for training of the models
+  testing_time: 50 # timesteps after training for testing
+  training_type: "TimesFM_zero_shot" # options: null, local_multichannel, split_multichannel, Chronos_zero_shot, TimesFM_zero_shot, local_timemixer, split_timemixer
+  train_size: 1000
+  val_size: 50
+  epochs: 3000
+  learning_rate: 0.001
+  momentum: 0.9
+  batch_size: 32
+  sequence_length: 14
+
+market:
+  data_scource: # if empty/null, market configuration is used
+  primary_demand: 1000
+  trend_magnitude: 2
+  seasonality_magnitude: 5
+  seasonality_frequncy: 7
+  random_walk:
+    mean: 10
+    variance: 1
+  demand_split: [0.8, 0.2]
+
+supply_chain:
+  agents_per_level: [2, 3]
+
+  sc_levels:
+    sc_level_0:
+      adjaceny_list: [[1, 1, 1], [1, 1, 1]]
+      lead_time: 1
+      replenishment_strat: ["OUT", "OUT"]
+      forecasting_strat: ["MA", "MA"]
+      inv_capacity: [50000, 50000]
+      init_inv: [0, 0]
+      safety_risk_factor: [1, 1]
+      R: [1, 1]
+
+    sc_level_1:
+      adjaceny_list: [[1], [1], [1]]
+      lead_time: 1
+      replenishment_strat: ["OUT", "OUT", "OUT"]
+      forecasting_strat: ["MA", "MA", "MA"]
+      inv_capacity: [10000, 100000, 10000]
+      init_inv: [0, 0, 0]
+      safety_risk_factor: [1, 1, 1]
+      R: [1, 1, 1]
+
+
+# =============================================================================
+# EXPERIMENT DEFINITIONS
+# =============================================================================
+#
+# Compact name format:
+#
+#   <training_name>_<number>
+#
+# Example:
+#
+#   timesfm_zero_shot_014
+#
+# The corresponding seasonality frequency, noise, and lead time are defined
+# inside overrides and should be displayed in the CLI/dashboard by reading the
+# resolved configuration.
+#
+# =============================================================================
+
+experiments:
+
+  # no_training_ma
+  - name: no_training_ma_001
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: no_training_ma_002
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: no_training_ma_003
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: no_training_ma_004
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: no_training_ma_005
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: no_training_ma_006
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: no_training_ma_007
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: no_training_ma_008
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: no_training_ma_009
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: no_training_ma_010
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: no_training_ma_011
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: no_training_ma_012
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: no_training_ma_013
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: no_training_ma_014
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: no_training_ma_015
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: no_training_ma_016
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: no_training_ma_017
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: no_training_ma_018
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: no_training_ma_019
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: no_training_ma_020
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: no_training_ma_021
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: no_training_ma_022
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: no_training_ma_023
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: no_training_ma_024
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: no_training_ma_025
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: no_training_ma_026
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: no_training_ma_027
+    overrides:
+      sim:
+        training_type: null
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+
+  # local_multichannel
+  - name: local_multichannel_001
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: local_multichannel_002
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: local_multichannel_003
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: local_multichannel_004
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: local_multichannel_005
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: local_multichannel_006
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: local_multichannel_007
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: local_multichannel_008
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: local_multichannel_009
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: local_multichannel_010
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: local_multichannel_011
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: local_multichannel_012
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: local_multichannel_013
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: local_multichannel_014
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: local_multichannel_015
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: local_multichannel_016
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: local_multichannel_017
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: local_multichannel_018
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: local_multichannel_019
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: local_multichannel_020
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: local_multichannel_021
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: local_multichannel_022
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: local_multichannel_023
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: local_multichannel_024
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: local_multichannel_025
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: local_multichannel_026
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: local_multichannel_027
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+
+  # split_multichannel
+  - name: split_multichannel_001
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: split_multichannel_002
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: split_multichannel_003
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: split_multichannel_004
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: split_multichannel_005
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: split_multichannel_006
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: split_multichannel_007
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: split_multichannel_008
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: split_multichannel_009
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: split_multichannel_010
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: split_multichannel_011
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: split_multichannel_012
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: split_multichannel_013
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: split_multichannel_014
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: split_multichannel_015
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: split_multichannel_016
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: split_multichannel_017
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: split_multichannel_018
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: split_multichannel_019
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: split_multichannel_020
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: split_multichannel_021
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: split_multichannel_022
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: split_multichannel_023
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: split_multichannel_024
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: split_multichannel_025
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: split_multichannel_026
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: split_multichannel_027
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+
+  # chronos_zero_shot
+  - name: chronos_zero_shot_001
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: chronos_zero_shot_002
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: chronos_zero_shot_003
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: chronos_zero_shot_004
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: chronos_zero_shot_005
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: chronos_zero_shot_006
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: chronos_zero_shot_007
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: chronos_zero_shot_008
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: chronos_zero_shot_009
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: chronos_zero_shot_010
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: chronos_zero_shot_011
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: chronos_zero_shot_012
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: chronos_zero_shot_013
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: chronos_zero_shot_014
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: chronos_zero_shot_015
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: chronos_zero_shot_016
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: chronos_zero_shot_017
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: chronos_zero_shot_018
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: chronos_zero_shot_019
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: chronos_zero_shot_020
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: chronos_zero_shot_021
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: chronos_zero_shot_022
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: chronos_zero_shot_023
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: chronos_zero_shot_024
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: chronos_zero_shot_025
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: chronos_zero_shot_026
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: chronos_zero_shot_027
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+
+  # timesfm_zero_shot
+  - name: timesfm_zero_shot_001
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timesfm_zero_shot_002
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timesfm_zero_shot_003
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timesfm_zero_shot_004
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timesfm_zero_shot_005
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timesfm_zero_shot_006
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timesfm_zero_shot_007
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timesfm_zero_shot_008
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timesfm_zero_shot_009
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timesfm_zero_shot_010
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timesfm_zero_shot_011
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timesfm_zero_shot_012
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timesfm_zero_shot_013
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timesfm_zero_shot_014
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timesfm_zero_shot_015
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timesfm_zero_shot_016
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timesfm_zero_shot_017
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timesfm_zero_shot_018
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timesfm_zero_shot_019
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timesfm_zero_shot_020
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timesfm_zero_shot_021
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timesfm_zero_shot_022
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timesfm_zero_shot_023
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timesfm_zero_shot_024
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timesfm_zero_shot_025
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timesfm_zero_shot_026
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timesfm_zero_shot_027
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+
+  # timemixer_local
+  - name: timemixer_local_001
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_local_002
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_local_003
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timemixer_local_004
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_local_005
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_local_006
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timemixer_local_007
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_local_008
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_local_009
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timemixer_local_010
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_local_011
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_local_012
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timemixer_local_013
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_local_014
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_local_015
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timemixer_local_016
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_local_017
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_local_018
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timemixer_local_019
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_local_020
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_local_021
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timemixer_local_022
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_local_023
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_local_024
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timemixer_local_025
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_local_026
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_local_027
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+
+  # timemixer_split
+  - name: timemixer_split_001
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_split_002
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_split_003
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timemixer_split_004
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_split_005
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_split_006
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timemixer_split_007
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_split_008
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_split_009
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 7
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timemixer_split_010
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_split_011
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_split_012
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timemixer_split_013
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_split_014
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_split_015
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timemixer_split_016
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_split_017
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_split_018
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 15
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timemixer_split_019
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_split_020
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_split_021
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 0
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timemixer_split_022
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_split_023
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_split_024
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 10
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timemixer_split_025
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_split_026
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_split_027
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      market:
+        seasonality_frequncy: 30
+        random_walk:
+          variance: 100
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3

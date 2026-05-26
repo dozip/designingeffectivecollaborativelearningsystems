@@ -114,7 +114,7 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
         # 3) Train
 
         for epoch in range(agent.epochs):
-            logger.info(f"Number Epoch: {epoch}")
+            logger.debug(f"Number Epoch: {epoch}")
             training_loss_epoch = [0]
 
             for model in lstm_models:
@@ -291,15 +291,15 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
                 sum_val_loss = np.sum(loss_list_item)
                 # validation_loss.append(sum_val_loss)
 
-                logger.info(f"validation_loss_sum: {sum_val_loss}")
-                logger.info(f"validation_loss_per_agent: {loss_list_item}")
+                logger.debug(f"validation_loss_sum: {sum_val_loss}")
+                logger.debug(f"validation_loss_per_agent: {loss_list_item}")
 
                 # ceck for early stopping
                 model_list = [lstm_models, dense_models]
                 early_stopping(sum_val_loss, deepcopy(model_list))
 
                 if early_stopping.early_stop:
-                    print("Early stopping")
+                    logger.debug("Early stopping")
                     epoch_diff = agent.epochs - epoch
                     #### if early stopping is reached, then use the last loss values for the rest of the planned epochs
                     for k in range(epoch_diff):
@@ -309,7 +309,7 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
 
         best_model = early_stopping.best_model
         lstm_models, dense_models = best_model
-        logger.info(f"Training-Loss: {training_loss_epoch}")
+        logger.debug(f"Training-Loss: {training_loss_epoch}")
 
         model = MultiChannel_LSTM(num_channels=agent.num_retailer, lstm_model=lstm_models, dense_model=dense_models, scaler=scaler, device=device)
 
