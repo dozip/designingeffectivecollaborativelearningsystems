@@ -1401,7 +1401,7 @@ def run_load_balanced(
                     last_event=last_event,
                 )
 
-                time.sleep(10)
+                time.sleep(3)
 
                 cpu_usage = psutil.cpu_percent(interval=0.1)
                 ram_usage = psutil.virtual_memory().percent
@@ -1524,7 +1524,7 @@ def run():
         jobs=jobs,
 
         # Total number of simultaneous experiment processes.
-        max_parallel_processes=18,
+        max_parallel_processes=50,
 
         # New jobs only start if CPU/RAM are below these thresholds.
         max_cpu_usage=75.0,
@@ -1538,7 +1538,7 @@ def run():
 
         # With 3 GPUs and max_jobs_per_gpu=8, this allows up to 24 GPU jobs.
         # For heavy ML training, reduce this to 1.
-        max_jobs_per_gpu=6,
+        max_jobs_per_gpu=15,
 
         # Scheduler check interval.
         poll_seconds=1.0,
