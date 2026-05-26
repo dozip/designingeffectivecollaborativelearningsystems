@@ -299,7 +299,7 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
                 early_stopping(sum_val_loss, deepcopy(model_list))
 
                 if early_stopping.early_stop:
-                    print("Early stopping")
+                    logger.debug("Early stopping")
                     epoch_diff = agent.epochs - epoch
                     #### if early stopping is reached, then use the last loss values for the rest of the planned epochs
                     for k in range(epoch_diff):
