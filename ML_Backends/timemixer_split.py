@@ -954,7 +954,7 @@ def _train_split_timemixer_option_d(simulation, market, supply_chain, sc_agent_l
 
         early_stopping(val_loss_sum, agent_client_models, server_model, scalers)
         if early_stopping.early_stop:
-            logger.info(
+            logger.debug(
                 "Early stopping at epoch %d. Best validation loss: %.6f",
                 epoch,
                 early_stopping.best_loss,

@@ -579,7 +579,7 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
 
         early_stopping(val_loss, models, scaler)
         if early_stopping.early_stop:
-            logger.info(
+            logger.debug(
                 "%s | Early stopping at epoch %d. Best validation loss: %.6f",
                 agent_label,
                 epoch,
