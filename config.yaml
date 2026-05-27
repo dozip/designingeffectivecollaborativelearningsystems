@@ -70,7 +70,7 @@ sim:
   simulation_time: 2500 # define time steps to simulate after warm up until training
   training_time: 500 # considered time steps for training of the models
   testing_time: 50 # timesteps after training for testing
-  training_type: "TimesFM_zero_shot" # options: null, local_multichannel, split_multichannel, Chronos_zero_shot, TimesFM_zero_shot
+  training_type: "TimesFM_zero_shot" # options: null, local_multichannel, split_multichannel, Chronos_zero_shot, TimesFM_zero_shot, local_timemixer, split_timemixer, local_patchtst, split_patchtst
   train_size: 400
   val_size: 50
   epochs: 10
