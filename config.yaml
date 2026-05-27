@@ -64,7 +64,8 @@
 
 
 sim:
-  simulation_runs: 1
+  simulation_runs: 2
+  run_start_id: 5
   convergence_time: 2500 # define the warm up phase
   simulation_time: 2500 # define time steps to simulate after warm up until training
   training_time: 500 # considered time steps for training of the models
@@ -72,7 +73,7 @@ sim:
   training_type: "TimesFM_zero_shot" # options: null, local_multichannel, split_multichannel, Chronos_zero_shot, TimesFM_zero_shot
   train_size: 400
   val_size: 50
-  epochs: 3000
+  epochs: 10
   learning_rate: 0.001
   momentum: 0.9
   batch_size: 32
@@ -141,12 +142,15 @@ experiments:
       sim:
         training_type: "split_multichannel"
 
-  - name: chronos_zero_shot
-    overrides:
-      sim:
-        training_type: "Chronos_zero_shot"
-
   - name: timesfm_zero_shot
     overrides:
       sim:
         training_type: "TimesFM_zero_shot"
+  - name: timemixer_local
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+  - name: timemixer_splot
+    overrides:
+      sim:
+        training_type: "split_timemixer"
