@@ -225,6 +225,39 @@ def compact_value_for_path(value) -> str:
     return safe_experiment_name(text)
 
 
+def get_run_start_id(cfg: dict, default: int = 0) -> int:
+    """
+    Read the first run ID to use for this experiment from the config.
+
+    Preferred YAML location:
+        sim.run_start_id
+
+    Fallback location, also accepted:
+        run_start_id
+
+    Example:
+        simulation_runs: 3
+        run_start_id: 10
+
+    This creates runs 10, 11, 12 instead of 0, 1, 2.
+    The run_id is also used in the seed, so later batches can continue with
+    new seeds by increasing run_start_id.
+    """
+    value = first_existing_cfg_path(
+        cfg,
+        paths=[
+            ["sim", "run_start_id"],
+            ["run_start_id"],
+        ],
+        default=default,
+    )
+
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"run_start_id must be an integer-compatible value, got {value!r}"
+        ) from exc
 
 
 def get_experiment_dashboard_values(cfg: dict) -> dict:
@@ -950,6 +983,10 @@ def run_single_experiment(
 
     np.random.seed(seed)
     random.seed(seed)
+    torch.manual_seed(seed)
+
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
     simulation, market, supply_chain, sc_agent_list = reset_simulaltion_from_dict(cfg)
 
@@ -1445,17 +1482,20 @@ def run_load_balanced(
         )
 
         if failed_jobs:
-            failed_names = [
-                (
-                    f"{info['job']['experiment_name']} "
-                    f"{info['job'].get('run_id_label', f"run_{info['job']['run_id']}")} "
-                    f"freq={info['job'].get('freq', 'NA')} "
-                    f"noise={info['job'].get('noise', 'NA')} "
-                    f"lead_time={info['job'].get('lead_time', 'NA')} "
+            failed_names = []
+
+            for info in failed_jobs:
+                job = info["job"]
+                run_id_label = job.get("run_id_label", f"run_{job['run_id']}")
+
+                failed_names.append(
+                    f"{job['experiment_name']} "
+                    f"{run_id_label} "
+                    f"freq={job.get('freq', 'NA')} "
+                    f"noise={job.get('noise', 'NA')} "
+                    f"lead_time={job.get('lead_time', 'NA')} "
                     f"exitcode={info['process'].exitcode}"
                 )
-                for info in failed_jobs
-            ]
 
             raise RuntimeError(
                 f"{len(failed_jobs)} experiment job(s) failed: {failed_names}"
@@ -1485,14 +1525,19 @@ def run():
     jobs = []
 
     for experiment_id, (experiment_name, cfg) in enumerate(experiment_configs):
-        sim_runs = cfg["sim"]["simulation_runs"]
+        sim_runs = int(cfg["sim"]["simulation_runs"])
+        run_start_id = get_run_start_id(cfg, default=0)
         training_type = cfg["sim"].get("training_type", None)
         needs_gpu = cfg_needs_gpu(cfg)
 
         dashboard_values = get_experiment_dashboard_values(cfg)
 
-        for run_number in range(sim_runs):
-            run_id_label = f"run_{run_number}"
+        for run_offset in range(sim_runs):
+            # Absolute run ID.
+            # If sim.run_start_id is set, this starts there instead of 0.
+            # The run_id is used for folder names, Reporting, and the seed.
+            run_id = run_start_id + run_offset
+            run_id_label = f"run_{run_id}"
 
             jobs.append(
                 {
@@ -1503,7 +1548,11 @@ def run():
 
                     # Keep this numeric.
                     # It is used for seeds and Reporting.
-                    "run_id": run_number,
+                    "run_id": run_id,
+
+                    # Keep the zero-based offset too, in case you need it later
+                    # for debugging or dashboard extensions.
+                    "run_offset": run_offset,
 
                     # Use this for CLI/dashboard display.
                     "run_id_label": run_id_label,
