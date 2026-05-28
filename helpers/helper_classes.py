@@ -309,68 +309,62 @@ class DataCollector():
         return target
 
 class EarlyStopping:
-    """Early stops the training if validation loss doesn't improve after a given patience."""
+    """Early stops training if validation loss does not improve after patience.
+
+    This shared helper can store any backend-specific snapshot in ``best_model``.
+    For PyTorch models, pass a deepcopy or state_dict snapshot into ``__call__``;
+    do not pass live model objects unless reference semantics are intended.
+
+    Args:
+        patience (int): How long to wait after the last qualifying improvement.
+        verbose (bool): If True, prints a message for each improvement/counter update.
+        delta (float): Minimum decrease in validation loss required to count as
+            an improvement. This is equivalent to ``min_delta`` in the backend configs.
+        path (str): Optional checkpoint path used only by ``save_checkpoint``.
+        trace_func (callable): Function used for verbose messages.
+    """
+
     def __init__(self, patience=7, verbose=False, delta=0, path='checkpoint.pt', trace_func=print):
-        """
-        Args:
-            patience (int): How long to wait after last time validation loss improved.
-                            Default: 7
-            verbose (bool): If True, prints a message for each validation loss improvement. 
-                            Default: False
-            delta (float): Minimum change in the monitored quantity to qualify as an improvement.
-                            Default: 0
-            path (str): Path for the checkpoint to be saved to.
-                            Default: 'checkpoint.pt'
-            trace_func (function): trace print function.
-                            Default: print            
-        """
-        self.patience = patience
+        self.patience = int(patience)
         self.verbose = verbose
         self.counter = 0
         self.best_score = None
+        self.best_loss = np.inf
         self.early_stop = False
         self.val_loss_min = np.inf
-        self.delta = delta
+        self.delta = float(delta)
         self.path = path
         self.trace_func = trace_func
         self.best_model = None
 
     def __call__(self, val_loss, model):
-
+        val_loss = float(val_loss)
         score = -val_loss
 
         if self.best_score is None:
             self.best_score = score
+            self.best_loss = val_loss
             self.best_model = model
+            if self.verbose:
+                self.trace_func(f'EarlyStopping initialized with validation loss {val_loss:.6f}')
         elif score < self.best_score + self.delta:
             self.counter += 1
-            self.trace_func(f'EarlyStopping counter: {self.counter} out of {self.patience}')
+            if self.verbose:
+                self.trace_func(f'EarlyStopping counter: {self.counter} out of {self.patience}')
             if self.counter >= self.patience:
                 self.early_stop = True
         else:
+            if self.verbose:
+                self.trace_func(
+                    f'Validation loss improved ({self.best_loss:.6f} --> {val_loss:.6f}).'
+                )
             self.best_score = score
+            self.best_loss = val_loss
             self.best_model = model
             self.counter = 0
 
-    # def __call__(self, val_loss):
-
-    #     score = -val_loss
-
-    #     if self.best_score is None:
-    #         self.best_score = score
-    #         # self.save_checkpoint(val_loss, model)
-    #     elif score < self.best_score + self.delta:
-    #         self.counter += 1
-    #         self.trace_func(f'EarlyStopping counter: {self.counter} out of {self.patience}')
-    #         if self.counter >= self.patience:
-    #             self.early_stop = True
-    #     else:
-    #         self.best_score = score
-    #         # self.save_checkpoint(val_loss, model)
-    #         self.counter = 0
-
     def save_checkpoint(self, val_loss, model):
-        '''Saves model when validation loss decrease.'''
+        """Saves model when validation loss decreases."""
         if self.verbose:
             self.trace_func(f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
         torch.save(model.state_dict(), self.path)

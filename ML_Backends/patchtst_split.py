@@ -44,6 +44,7 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, TensorDataset
 
 from helpers.helpers import create_dataset, select_gpu
+from helpers.helper_classes import EarlyStopping
 from .base import ForecastingBackend
 from . import register_backend
 from .patchtst_local import RevIN, _compute_num_patches
@@ -274,37 +275,6 @@ class ChannelSpec:
     loader_idx: int
 
 
-class SplitEarlyStopping:
-    """Early stopping that stores best client/server state_dicts."""
-
-    def __init__(self, patience: int = 100, min_delta: float = 0.0) -> None:
-        self.patience = int(patience)
-        self.min_delta = float(min_delta)
-        self.best_loss = float("inf")
-        self.counter = 0
-        self.early_stop = False
-        self.best_state: Optional[Dict[str, Any]] = None
-
-    def __call__(
-        self,
-        val_loss: float,
-        agent_client_models: Sequence[nn.ModuleList],
-        server_model: nn.Module,
-        scalers: Sequence[StandardScaler],
-    ) -> None:
-        improved = val_loss < (self.best_loss - self.min_delta)
-        if improved:
-            self.best_loss = float(val_loss)
-            self.counter = 0
-            self.best_state = {
-                "server": copy.deepcopy(server_model.state_dict()),
-                "clients": [copy.deepcopy(models.state_dict()) for models in agent_client_models],
-                "scalers": list(scalers),
-            }
-        else:
-            self.counter += 1
-            if self.counter >= self.patience:
-                self.early_stop = True
 
 
 # ---------------------------------------------------------------------------
@@ -389,9 +359,27 @@ class PatchTSTSplitBackend(ForecastingBackend):
 # Training helpers
 # ---------------------------------------------------------------------------
 
-
 def _cfg_get(cfg: Dict[str, Any], key: str, default: Any) -> Any:
-    return cfg.get("patchtst", {}).get(key, default)
+    """Read settings from YAML.
+
+    Early-stopping settings are global for all trainable backends:
+        early_stopping:
+          patience: 100
+          min_delta: 0.0
+
+    Other model-specific hyperparameters are still read from:
+        patchtst:
+          ...
+    """
+    if isinstance(cfg, dict) and key in {"patience", "min_delta"}:
+        es_cfg = cfg.get("early_stopping", {})
+        if isinstance(es_cfg, dict) and key in es_cfg:
+            return es_cfg[key]
+
+    model_cfg = cfg.get("patchtst", {}) if isinstance(cfg, dict) else {}
+    if isinstance(model_cfg, dict) and key in model_cfg:
+        return model_cfg[key]
+    return default
 
 
 def _last_horizon_target(y: torch.Tensor, horizon: int) -> torch.Tensor:
@@ -575,7 +563,11 @@ def _train_split_patchtst(simulation, market, supply_chain, sc_agent_list, cfg):
         len(channel_specs), len(level_agents), common_batch_size, patch_len, stride, d_model,
     )
 
-    early_stopping = SplitEarlyStopping(patience=patience, min_delta=min_delta)
+    early_stopping = EarlyStopping(
+        patience=patience,
+        verbose=True,
+        delta=min_delta,
+    )
     val_loss_history: List[float] = []
 
     # ------------------------------------------------------------------
@@ -743,7 +735,17 @@ def _train_split_patchtst(simulation, market, supply_chain, sc_agent_list, cfg):
             np.round(val_losses_per_agent, 6).tolist(),
         )
 
-        early_stopping(val_loss_sum, agent_client_models, server_model, scalers)
+        early_stopping(
+            val_loss_sum,
+            {
+                "server": copy.deepcopy(server_model.state_dict()),
+                "clients": [
+                    copy.deepcopy(models.state_dict())
+                    for models in agent_client_models
+                ],
+                "scalers": copy.deepcopy(scalers),
+            },
+        )
         if early_stopping.early_stop:
             logger.info(
                 "Early stopping at epoch %d. Best validation loss: %.6f",
@@ -755,11 +757,12 @@ def _train_split_patchtst(simulation, market, supply_chain, sc_agent_list, cfg):
     # ------------------------------------------------------------------
     # Restore best model and attach forecasting objects to agents.
     # ------------------------------------------------------------------
-    if early_stopping.best_state is not None:
-        server_model.load_state_dict(early_stopping.best_state["server"])
-        for agent_idx, state in enumerate(early_stopping.best_state["clients"]):
+    if early_stopping.best_model is not None:
+        best_snapshot = early_stopping.best_model
+        server_model.load_state_dict(best_snapshot["server"])
+        for agent_idx, state in enumerate(best_snapshot["clients"]):
             agent_client_models[agent_idx].load_state_dict(state)
-        scalers = early_stopping.best_state["scalers"]
+        scalers = best_snapshot["scalers"]
 
     for agent_idx, agent in enumerate(level_agents):
         fm = SplitPatchTSTForecastingModel(

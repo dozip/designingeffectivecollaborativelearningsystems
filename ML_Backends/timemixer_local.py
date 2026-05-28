@@ -32,6 +32,7 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, TensorDataset
 
 from helpers.helpers import create_dataset, select_gpu
+from helpers.helper_classes import EarlyStopping
 from .base import ForecastingBackend
 from . import register_backend
 
@@ -331,30 +332,6 @@ class LocalTimeMixerForecastingModel:
         return predictions
 
 
-class LocalEarlyStopping:
-    """Early stopping for one independently trained agent."""
-
-    def __init__(self, patience: int = 100, min_delta: float = 0.0) -> None:
-        self.patience = int(patience)
-        self.min_delta = float(min_delta)
-        self.best_loss = float("inf")
-        self.counter = 0
-        self.early_stop = False
-        self.best_state: Optional[Dict[str, Any]] = None
-
-    def __call__(self, val_loss: float, models: nn.ModuleList, scaler: StandardScaler) -> None:
-        improved = val_loss < (self.best_loss - self.min_delta)
-        if improved:
-            self.best_loss = float(val_loss)
-            self.counter = 0
-            self.best_state = {
-                "models": copy.deepcopy(models.state_dict()),
-                "scaler": scaler,
-            }
-        else:
-            self.counter += 1
-            if self.counter >= self.patience:
-                self.early_stop = True
 
 
 # ---------------------------------------------------------------------------
@@ -382,9 +359,27 @@ class LocalTimeMixerBackend(ForecastingBackend):
 # Training helpers
 # ---------------------------------------------------------------------------
 
-
 def _cfg_get(cfg: Dict[str, Any], key: str, default: Any) -> Any:
-    return cfg.get("timemixer", {}).get(key, default)
+    """Read settings from YAML.
+
+    Early-stopping settings are global for all trainable backends:
+        early_stopping:
+          patience: 100
+          min_delta: 0.0
+
+    Other model-specific hyperparameters are still read from:
+        timemixer:
+          ...
+    """
+    if isinstance(cfg, dict) and key in {"patience", "min_delta"}:
+        es_cfg = cfg.get("early_stopping", {})
+        if isinstance(es_cfg, dict) and key in es_cfg:
+            return es_cfg[key]
+
+    model_cfg = cfg.get("timemixer", {}) if isinstance(cfg, dict) else {}
+    if isinstance(model_cfg, dict) and key in model_cfg:
+        return model_cfg[key]
+    return default
 
 
 def _last_horizon_target(y: torch.Tensor, horizon: int) -> torch.Tensor:
@@ -444,8 +439,8 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
     learning_rate = float(tm_cfg.get("learning_rate", 1e-3))
     weight_decay = float(tm_cfg.get("weight_decay", 1e-4))
     grad_clip = float(tm_cfg.get("grad_clip", 1.0))
-    patience = int(tm_cfg.get("patience", 100))
-    min_delta = float(tm_cfg.get("min_delta", 0.0))
+    patience = int(_cfg_get(cfg, "patience", 100))
+    min_delta = float(_cfg_get(cfg, "min_delta", 0.0))
     num_workers = int(tm_cfg.get("num_workers", 0))
     loss_cal = str(tm_cfg.get("loss_cal", "aggregated"))
     batch_size = int(tm_cfg.get("batch_size", int(agent.batch_size)))
@@ -508,7 +503,11 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
         )
         val_data.append((x_val, y_val))
 
-    early_stopping = LocalEarlyStopping(patience=patience, min_delta=min_delta)
+    early_stopping = EarlyStopping(
+        patience=patience,
+        verbose=True,
+        delta=min_delta,
+    )
     val_history: List[float] = []
 
     # ----------------------------
@@ -577,7 +576,13 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
             val_loss,
         )
 
-        early_stopping(val_loss, models, scaler)
+        early_stopping(
+            val_loss,
+            {
+                "models": copy.deepcopy(models.state_dict()),
+                "scaler": copy.deepcopy(scaler),
+            },
+        )
         if early_stopping.early_stop:
             logger.debug(
                 "%s | Early stopping at epoch %d. Best validation loss: %.6f",
@@ -588,9 +593,10 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
             break
 
     # Restore best local models for this agent.
-    if early_stopping.best_state is not None:
-        models.load_state_dict(early_stopping.best_state["models"])
-        scaler = early_stopping.best_state["scaler"]
+    if early_stopping.best_model is not None:
+        best_snapshot = early_stopping.best_model
+        models.load_state_dict(best_snapshot["models"])
+        scaler = best_snapshot["scaler"]
 
     agent.set_forecasting_model(
         LocalTimeMixerForecastingModel(
@@ -601,7 +607,7 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
         )
     )
 
-    return float(early_stopping.best_loss if early_stopping.best_state is not None else val_history[-1])
+    return float(early_stopping.best_loss if early_stopping.best_model is not None else val_history[-1])
 
 
 def _train_local_timemixers(simulation, market, supply_chain, sc_agent_list, cfg: Dict[str, Any]) -> List[float]:

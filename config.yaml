@@ -79,6 +79,10 @@ sim:
   batch_size: 32
   sequence_length: 4
 
+early_stopping:
+  patience: 100
+  min_delta: 0.0
+
 market:
   data_scource: # if empty/null, market configuration is used
   primary_demand: 1000

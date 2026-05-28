@@ -1,4 +1,5 @@
 import logging
+from copy import deepcopy
 from typing import Optional
 
 import numpy as np
@@ -16,6 +17,21 @@ from .base import ForecastingBackend
 from . import register_backend
 
 logger = logging.getLogger('logger')
+
+def _cfg_get_early_stopping(cfg, key, default):
+    """Read one global early-stopping setting from YAML.
+
+    Preferred YAML section for all trainable backends:
+        early_stopping:
+          patience: 100
+          min_delta: 0.0
+
+    The default keeps the old behavior if the key is not configured.
+    """
+    es_cfg = cfg.get("early_stopping", {}) if isinstance(cfg, dict) else {}
+    if isinstance(es_cfg, dict) and key in es_cfg:
+        return es_cfg[key]
+    return default
 
 
 @register_backend("split_multichannel")
@@ -131,8 +147,13 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
 
     train_size = simulation.train_size
     vall_size = simulation.val_size
-    patience = 400
-    early_stopping = EarlyStopping(patience=patience, verbose=True)
+    patience = int(_cfg_get_early_stopping(cfg, "patience", 400))
+    min_delta = float(_cfg_get_early_stopping(cfg, "min_delta", 0.0))
+    early_stopping = EarlyStopping(
+        patience=patience,
+        verbose=True,
+        delta=min_delta,
+    )
 
     # 1) Create Models
     for i, agent in enumerate(sc_agent_list[1]):
@@ -408,13 +429,23 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
             logger.debug(f"validation_loss_sum: {sum_val_loss}")
             logger.debug(f"validation_loss_per_agent: {loss_list_item}")
 
-            # ceck for early stopping
-            early_stopping(sum_val_loss, agent_models)
+            # check for early stopping
+            snapshot = {
+                "agents": deepcopy(agent_models),
+                "server": None,
+                "scalers": deepcopy(scaler_list),
+            }
+            early_stopping(sum_val_loss, snapshot)
 
             if early_stopping.early_stop:
                 print("Early stopping")
                 break
-    best_models = early_stopping.best_model
+    best_snapshot = early_stopping.best_model
+    if best_snapshot is not None:
+        best_models = best_snapshot["agents"]
+        scaler_list = best_snapshot["scalers"]
+    else:
+        best_models = agent_models
 
     for j, agent_key in enumerate(best_models):
         lstm_models = best_models[agent_key]['lstm_model']
