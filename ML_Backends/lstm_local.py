@@ -18,6 +18,21 @@ from . import register_backend
 
 logger = logging.getLogger('logger')
 
+def _cfg_get_early_stopping(cfg, key, default):
+    """Read one global early-stopping setting from YAML.
+
+    Preferred YAML section for all trainable backends:
+        early_stopping:
+          patience: 100
+          min_delta: 0.0
+
+    The default keeps the old behavior if the key is not configured.
+    """
+    es_cfg = cfg.get("early_stopping", {}) if isinstance(cfg, dict) else {}
+    if isinstance(es_cfg, dict) and key in es_cfg:
+        return es_cfg[key]
+    return default
+
 
 @register_backend("local_multichannel")
 class LSTMLocalBackend(ForecastingBackend):
@@ -58,8 +73,13 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
 
         train_size = simulation.train_size
         vall_size = simulation.val_size
-        patience = 400
-        early_stopping = EarlyStopping(patience=patience, verbose=True)
+        patience = int(_cfg_get_early_stopping(cfg, "patience", 400))
+        min_delta = float(_cfg_get_early_stopping(cfg, "min_delta", 0.0))
+        early_stopping = EarlyStopping(
+            patience=patience,
+            verbose=True,
+            delta=min_delta,
+        )
 
         # 1) Create Model
         lstm_models = []
@@ -295,8 +315,11 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
                 logger.debug(f"validation_loss_per_agent: {loss_list_item}")
 
                 # ceck for early stopping
-                model_list = [lstm_models, dense_models]
-                early_stopping(sum_val_loss, deepcopy(model_list))
+                snapshot = {
+                    "models": deepcopy([lstm_models, dense_models]),
+                    "scaler": deepcopy(scaler),
+                }
+                early_stopping(sum_val_loss, snapshot)
 
                 if early_stopping.early_stop:
                     logger.debug("Early stopping")
@@ -307,8 +330,10 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
                     break
                 val_loss_agent.append(sum_val_loss)
 
-        best_model = early_stopping.best_model
-        lstm_models, dense_models = best_model
+        best_snapshot = early_stopping.best_model
+        if best_snapshot is not None:
+            lstm_models, dense_models = best_snapshot["models"]
+            scaler = best_snapshot["scaler"]
         logger.debug(f"Training-Loss: {training_loss_epoch}")
 
         model = MultiChannel_LSTM(num_channels=agent.num_retailer, lstm_model=lstm_models, dense_model=dense_models, scaler=scaler, device=device)
