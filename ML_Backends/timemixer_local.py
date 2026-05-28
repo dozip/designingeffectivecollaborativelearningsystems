@@ -423,7 +423,7 @@ def _build_agent_dataframe(agent) -> pd.DataFrame:
     return pd.DataFrame(data).transpose()
 
 
-def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], device: torch.device) -> float:
+def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], device: torch.device) -> List[float]:
     tm_cfg = cfg.get("timemixer", {})
 
     epochs = int(cfg["sim"]["epochs"])
@@ -607,7 +607,11 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
         )
     )
 
-    return float(early_stopping.best_loss if early_stopping.best_model is not None else val_history[-1])
+    # Pad val_history to `epochs` with the last observed value so all agents
+    # contribute the same-length per-epoch series for plotting.
+    while len(val_history) < epochs:
+        val_history.append(val_history[-1] if val_history else float("nan"))
+    return val_history
 
 
 def _train_local_timemixers(simulation, market, supply_chain, sc_agent_list, cfg: Dict[str, Any]) -> List[float]:
@@ -617,12 +621,17 @@ def _train_local_timemixers(simulation, market, supply_chain, sc_agent_list, cfg
     level_ids = _selected_levels(sc_agent_list, cfg)
     logger.info("Training local TimeMixers for levels: %s", level_ids)
 
-    val_losses: List[float] = []
+    val_loss_list: List[List[float]] = []
     for level in level_ids:
         for agent_idx, agent in enumerate(sc_agent_list[level]):
             agent_label = f"level_{level}/agent_{agent_idx}"
-            best_val = _train_one_agent(agent, agent_label, simulation, cfg, device)
-            val_losses.append(best_val)
+            history = _train_one_agent(agent, agent_label, simulation, cfg, device)
+            val_loss_list.append(history)
+            logger.info("%s | best val=%.6f", agent_label, float(np.min(history)))
 
-    logger.info("Finished local TimeMixer training. Validation losses: %s", val_losses)
-    return val_losses
+    val_loss = np.sum(np.array(val_loss_list), axis=0)  # shape (epochs,)
+    logger.info(
+        "Finished local TimeMixer training. Per-epoch summed val loss: first=%.6f last=%.6f",
+        float(val_loss[0]), float(val_loss[-1]),
+    )
+    return val_loss.tolist()
