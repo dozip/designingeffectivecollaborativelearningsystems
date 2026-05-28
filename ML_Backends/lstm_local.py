@@ -34,6 +34,26 @@ def _cfg_get_early_stopping(cfg, key, default):
     return default
 
 
+def _snapshot_local_lstm(lstm_models, dense_models, scaler):
+    """Store only trainable state for early stopping, not optimizers or live objects."""
+    return {
+        "lstm_model": [deepcopy(model.state_dict()) for model in lstm_models],
+        "dense_model": [deepcopy(model.state_dict()) for model in dense_models],
+        "scaler": deepcopy(scaler),
+    }
+
+
+def _restore_local_lstm_snapshot(snapshot, lstm_models, dense_models):
+    """Restore the selected best state into the existing model objects."""
+    for model, state in zip(lstm_models, snapshot["lstm_model"]):
+        model.load_state_dict(state)
+
+    for model, state in zip(dense_models, snapshot["dense_model"]):
+        model.load_state_dict(state)
+
+    return snapshot["scaler"]
+
+
 @register_backend("local_multichannel")
 class LSTMLocalBackend(ForecastingBackend):
     """Per-agent multi-channel LSTM, trained locally for each agent.
@@ -55,6 +75,7 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
     loss_cal = "aggregated"  # individual or aggregated
     loss_fn = nn.L1Loss()
     device = select_gpu()
+    pin_memory = getattr(device, "type", None) == "cuda"
     val_loss_list = []
 
     for i, agent in enumerate(sc_agent_list[1]):  # change 1 to variable for dynamics
@@ -87,11 +108,11 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
         lstm_optimizers = []
         dense_optimizers = []
         for j in range(agent.num_retailer):
-            lstm = LSTM_Model(n_input=lstm_input_dim, n_output=lstm_output_dim, n_hidden=lstm_hidden_dim)
+            lstm = LSTM_Model(n_input=lstm_input_dim, n_output=lstm_output_dim, n_hidden=lstm_hidden_dim).to(device)
             lstm_optim = torch.optim.SGD(lstm.parameters(), lr=learning_rate, momentum=momentum)
             lstm_models.append(lstm)
             lstm_optimizers.append(lstm_optim)
-            dense = NetLocal2(n_input=dense_input_dim, n_output=dense_ouput_dim)
+            dense = NetLocal2(n_input=dense_input_dim, n_output=dense_ouput_dim).to(device)
             dense_optim = torch.optim.SGD(dense.parameters(), lr=learning_rate, momentum=momentum)
             dense_models.append(dense)
             dense_optimizers.append(dense_optim)
@@ -124,8 +145,13 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
             val_data = data_val_scaled[:, j].reshape(vall_size, 1)
             X_train, y_train = create_dataset(train_data, lookback=agent.sequence_length)
             X_val, y_val = create_dataset(val_data, lookback=agent.sequence_length)
-            dataloader = DataLoader(TensorDataset(X_train, y_train),
-                                    batch_size=agent.batch_size, shuffle=False, num_workers=1)
+            dataloader = DataLoader(
+                TensorDataset(X_train, y_train),
+                batch_size=agent.batch_size,
+                shuffle=False,
+                num_workers=0,
+                pin_memory=pin_memory,
+            )
             trainloaders.append(dataloader)
             val_data_list.append([X_val, y_val])
 
@@ -136,11 +162,6 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
         for epoch in range(agent.epochs):
             logger.debug(f"Number Epoch: {epoch}")
             training_loss_epoch = [0]
-
-            for model in lstm_models:
-                model.to(device)
-            for model in dense_models:
-                model.to(device)
 
             # go over every batch
             for batches in zip(*trainloaders):
@@ -161,8 +182,8 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
                 label_list = []
 
                 for j, batch in enumerate(batches):
-                    features_list.append(batch[0].to(device))
-                    label_list.append(batch[1].to(device))
+                    features_list.append(batch[0].to(device, non_blocking=pin_memory))
+                    label_list.append(batch[1].to(device, non_blocking=pin_memory))
 
                 ######################
                 ##### FORWARD ########
@@ -258,7 +279,7 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
                 lstm_outputs_detached = []
 
                 for i, idx in enumerate(range(agent.num_retailer)):
-                    output = lstm_models[i](val_data_list[i][0].to(device))
+                    output = lstm_models[i](val_data_list[i][0].to(device, non_blocking=pin_memory))
                     output_detached = output.clone().detach().requires_grad_(True)
                     lstm_outputs.append(output)
                     lstm_outputs_detached.append(output_detached)
@@ -315,10 +336,7 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
                 logger.debug(f"validation_loss_per_agent: {loss_list_item}")
 
                 # ceck for early stopping
-                snapshot = {
-                    "models": deepcopy([lstm_models, dense_models]),
-                    "scaler": deepcopy(scaler),
-                }
+                snapshot = _snapshot_local_lstm(lstm_models, dense_models, scaler)
                 early_stopping(sum_val_loss, snapshot)
 
                 if early_stopping.early_stop:
@@ -332,8 +350,11 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
 
         best_snapshot = early_stopping.best_model
         if best_snapshot is not None:
-            lstm_models, dense_models = best_snapshot["models"]
-            scaler = best_snapshot["scaler"]
+            scaler = _restore_local_lstm_snapshot(
+                best_snapshot,
+                lstm_models,
+                dense_models,
+            )
         logger.debug(f"Training-Loss: {training_loss_epoch}")
 
         model = MultiChannel_LSTM(num_channels=agent.num_retailer, lstm_model=lstm_models, dense_model=dense_models, scaler=scaler, device=device)
