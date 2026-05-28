@@ -42,6 +42,7 @@
 
 sim:
   simulation_runs: 5
+  run_start_id: 5
   convergence_time: 2500 # define the warm up phase
   simulation_time: 2500 # define time steps to simulate after warm up until training
   training_time: 500 # considered time steps for training of the models
@@ -55,6 +56,10 @@ sim:
   batch_size: 32
   sequence_length: 14
 
+early_stopping:
+  patience: 100
+  min_delta: 0.0
+  
 market:
   data_scource: # if empty/null, market configuration is used
   primary_demand: 1000
