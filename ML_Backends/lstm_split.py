@@ -34,6 +34,58 @@ def _cfg_get_early_stopping(cfg, key, default):
     return default
 
 
+def _snapshot_split_lstm(agent_models, scaler_list, server_model=None):
+    """Store only trainable state for early stopping.
+
+    The current split LSTM has no trainable server module; server is kept as
+    an explicit key so this snapshot remains compatible with a future trainable
+    server component.
+    """
+    return {
+        "agents": {
+            agent_key: {
+                "lstm_model": [
+                    deepcopy(model.state_dict())
+                    for model in agent_data["lstm_model"]
+                ],
+                "dense_model": [
+                    deepcopy(model.state_dict())
+                    for model in agent_data["dense_model"]
+                ],
+                "dataloader_ids": list(agent_data["dataloader_ids"]),
+            }
+            for agent_key, agent_data in agent_models.items()
+        },
+        "server": (
+            deepcopy(server_model.state_dict())
+            if server_model is not None
+            else None
+        ),
+        "scalers": deepcopy(scaler_list),
+    }
+
+
+def _restore_split_lstm_snapshot(snapshot, agent_models, server_model=None):
+    """Restore the selected best state into existing split-LSTM objects."""
+    for agent_key, agent_snapshot in snapshot["agents"].items():
+        for model, state in zip(
+            agent_models[agent_key]["lstm_model"],
+            agent_snapshot["lstm_model"],
+        ):
+            model.load_state_dict(state)
+
+        for model, state in zip(
+            agent_models[agent_key]["dense_model"],
+            agent_snapshot["dense_model"],
+        ):
+            model.load_state_dict(state)
+
+    if server_model is not None and snapshot.get("server") is not None:
+        server_model.load_state_dict(snapshot["server"])
+
+    return snapshot["scalers"]
+
+
 @register_backend("split_multichannel")
 class LSTMSplitBackend(ForecastingBackend):
     """Collaborative split-learning multi-channel LSTM.
@@ -130,6 +182,7 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
     loss_cal = "aggregated"  # individual or aggregated
     loss_fn = nn.L1Loss()
     device = select_gpu()
+    pin_memory = getattr(device, "type", None) == "cuda"
 
     agent_models = {}
 
@@ -217,8 +270,13 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
             val_data = data_val_scaled[:, j].reshape(vall_size, 1)
             X_train, y_train = create_dataset(train_data, lookback=agent.sequence_length)
             X_val, y_val = create_dataset(val_data, lookback=agent.sequence_length)
-            dataloader = DataLoader(TensorDataset(X_train, y_train),
-                                    batch_size=agent.batch_size, shuffle=False, num_workers=1)
+            dataloader = DataLoader(
+                TensorDataset(X_train, y_train),
+                batch_size=agent.batch_size,
+                shuffle=False,
+                num_workers=0,
+                pin_memory=pin_memory,
+            )
             trainloaders.append(dataloader)
             agent_val_data.append([X_val, y_val])
         val_data_list.append(agent_val_data)
@@ -237,29 +295,28 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
                 training_loss_epoch = [0] * (num_supplier)
 
             # set models to training mode
-            for i, agent in enumerate(sc_agent_list[1]):
-                agent_key = "agent_" + str(i)
-                for j in range(agent.num_retailer):
-                    lstm_models = agent_models[agent_key]['lstm_model']
-                    lstm_optimizers = agent_models[agent_key]['lstm_optim']
-                    dense_models = agent_models[agent_key]['dense_model']
-                    dense_optimizers = agent_models[agent_key]['dense_optim']
-                    for model in lstm_models:
-                        model.train()
-                    for optim in lstm_optimizers:
-                        optim.zero_grad()
-                    for model in dense_models:
-                        model.train()
-                    for optim in dense_optimizers:
-                        optim.zero_grad()
+            for agent_key in agent_models:
+                lstm_models = agent_models[agent_key]['lstm_model']
+                lstm_optimizers = agent_models[agent_key]['lstm_optim']
+                dense_models = agent_models[agent_key]['dense_model']
+                dense_optimizers = agent_models[agent_key]['dense_optim']
+
+                for model in lstm_models:
+                    model.train()
+                for optim in lstm_optimizers:
+                    optim.zero_grad()
+                for model in dense_models:
+                    model.train()
+                for optim in dense_optimizers:
+                    optim.zero_grad()
 
             # get data of batch
             features_list = []
             label_list = []
 
             for i, batch in enumerate(batches):
-                features_list.append(batch[0].to(device))
-                label_list.append(batch[1].to(device))
+                features_list.append(batch[0].to(device, non_blocking=pin_memory))
+                label_list.append(batch[1].to(device, non_blocking=pin_memory))
 
             ######################
             ##### FORWARD ########
@@ -355,16 +412,12 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
         ##### Validation #####
         ######################
 
-        # set models to eval mode mode
-        for i, agent in enumerate(sc_agent_list[1]):
-            agent_key = "agent_" + str(i)
-            for j in range(agent.num_retailer):
-                lstm_models = agent_models[agent_key]['lstm_model']
-                lstm_optimizers = agent_models[agent_key]['lstm_optim']
-                for model in lstm_models:
-                    model.eval()
-                for model in dense_models:
-                    model.eval()
+        # set models to eval mode
+        for agent_key in agent_models:
+            for model in agent_models[agent_key]['lstm_model']:
+                model.eval()
+            for model in agent_models[agent_key]['dense_model']:
+                model.eval()
 
         with torch.no_grad():
 
@@ -377,10 +430,15 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
             for j, agent_key in enumerate(agent_models):
                 lstm_models = agent_models[agent_key]['lstm_model']
                 for i, id in enumerate(agent_models[agent_key]['dataloader_ids']):
-                    output = lstm_models[i](val_data_list[j][i][0].to(device))
+                    output = lstm_models[i](
+                        val_data_list[j][i][0].to(device, non_blocking=pin_memory)
+                    )
                     label_list.append(val_data_list[j][i][1][:, -1, :])  # use only last time step as target for validation loss
 
-                    rescaled_labels = val_data_list[j][i][1][:, -1, :] * scaler_list[j].scale_[i] + scaler_list[j].scale_[i]
+                    rescaled_labels = (
+                        val_data_list[j][i][1][:, -1, :] * scaler_list[j].scale_[i]
+                        + scaler_list[j].mean_[i]
+                    )
                     rescaled_label_list.append(rescaled_labels)
 
                     output_detached = output.clone().detach().requires_grad_(True)
@@ -415,7 +473,10 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
                     outputs = []
                     targets = []
                     for i, id in enumerate(agent_models[agent]['dataloader_ids']):
-                        outputs.append(dense_outputs[id][:, -1, :].cpu() * scaler_list[j].scale_[i] + scaler_list[j].scale_[i])  # use only last time step of predicted values for validation loss
+                        outputs.append(
+                            dense_outputs[id][:, -1, :].cpu() * scaler_list[j].scale_[i]
+                            + scaler_list[j].mean_[i]
+                        )  # use only last time step of predicted values for validation loss
                         targets.append(rescaled_label_list[id])
                     fusion_outputs = torch.cat(outputs, axis=1)
                     fusion_targets = torch.cat(targets, axis=1)
@@ -430,11 +491,11 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
             logger.debug(f"validation_loss_per_agent: {loss_list_item}")
 
             # check for early stopping
-            snapshot = {
-                "agents": deepcopy(agent_models),
-                "server": None,
-                "scalers": deepcopy(scaler_list),
-            }
+            snapshot = _snapshot_split_lstm(
+                agent_models=agent_models,
+                scaler_list=scaler_list,
+                server_model=None,
+            )
             early_stopping(sum_val_loss, snapshot)
 
             if early_stopping.early_stop:
@@ -442,14 +503,15 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
                 break
     best_snapshot = early_stopping.best_model
     if best_snapshot is not None:
-        best_models = best_snapshot["agents"]
-        scaler_list = best_snapshot["scalers"]
-    else:
-        best_models = agent_models
+        scaler_list = _restore_split_lstm_snapshot(
+            snapshot=best_snapshot,
+            agent_models=agent_models,
+            server_model=None,
+        )
 
-    for j, agent_key in enumerate(best_models):
-        lstm_models = best_models[agent_key]['lstm_model']
-        dense_models = best_models[agent_key]['dense_model']
+    for j, agent_key in enumerate(agent_models):
+        lstm_models = agent_models[agent_key]['lstm_model']
+        dense_models = agent_models[agent_key]['dense_model']
 
         model = MultiChannel_LSTM(num_channels=sc_agent_list[1][j].num_retailer, lstm_model=lstm_models,
                                   dense_model=dense_models, scaler=scaler_list[j], device=device)
