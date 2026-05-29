@@ -57,7 +57,7 @@ sim:
   sequence_length: 14
 
 early_stopping:
-  patience: 100
+  patience: 200
   min_delta: 0.0
   
 market:
