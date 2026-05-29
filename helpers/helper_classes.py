@@ -13,8 +13,7 @@ from sklearn.preprocessing import StandardScaler
 
 
 ### Def Logger
-logger = logging.getLogger('example_logger')
-
+logger = logging.getLogger("logger")
 
 class Replenishment():
 
@@ -324,7 +323,7 @@ class EarlyStopping:
         trace_func (callable): Function used for verbose messages.
     """
 
-    def __init__(self, patience=7, verbose=False, delta=0, path='checkpoint.pt', trace_func=print):
+    def __init__(self, patience=7, verbose=False, delta=0, path='checkpoint.pt', trace_func=logger.debug):
         self.patience = int(patience)
         self.verbose = verbose
         self.counter = 0
