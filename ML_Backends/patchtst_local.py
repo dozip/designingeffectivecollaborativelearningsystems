@@ -546,7 +546,7 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
             val_loss = float(loss_fn(outputs_agent, targets_agent).detach().cpu().item())
             val_history.append(val_loss)
 
-        logger.info(
+        logger.debug(
             "%s | Epoch %03d | train_loss=%.6f | val_loss=%.6f",
             agent_label,
             epoch,
@@ -562,7 +562,7 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
             },
         )
         if early_stopping.early_stop:
-            logger.info(
+            logger.debug(
                 "%s | Early stopping at epoch %d. Best validation loss: %.6f",
                 agent_label,
                 epoch,
