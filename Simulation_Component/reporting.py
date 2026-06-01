@@ -24,6 +24,48 @@ from helpers.helper_classes import *
 logger = logging.getLogger('example_logger')
 
 
+def _is_per_agent_val_loss(val_loss) -> bool:
+    """True iff val_loss is a 2D structure (per-agent histories).
+
+    Local backends with per-agent EarlyStopping return List[List[float]];
+    split / single-trajectory backends return List[float].
+    """
+    if val_loss is None:
+        return False
+    try:
+        first = next(iter(val_loss))
+    except (StopIteration, TypeError):
+        return False
+    return hasattr(first, "__iter__") and not isinstance(first, (str, bytes))
+
+
+def _val_loss_ylim_from_cfg(cfg):
+    """Read a shared y-axis range for val_loss plots from cfg.
+
+    Looks for cfg['reporting']['val_loss_ylim'] which may be:
+        - [low, high]      -> use those limits
+        - {min: ..., max: ...} or {bottom: ..., top: ...}
+        - None / missing   -> auto-scale (no fixed ylim)
+    """
+    if not isinstance(cfg, dict):
+        return None
+    reporting_cfg = cfg.get("reporting", {})
+    if not isinstance(reporting_cfg, dict):
+        return None
+    ylim = reporting_cfg.get("val_loss_ylim")
+    if ylim is None:
+        return None
+    if isinstance(ylim, (list, tuple)) and len(ylim) == 2:
+        return (float(ylim[0]), float(ylim[1]))
+    if isinstance(ylim, dict):
+        low = ylim.get("min", ylim.get("bottom", 0.0))
+        high = ylim.get("max", ylim.get("top", None))
+        if high is None:
+            return None
+        return (float(low), float(high))
+    return None
+
+
 class Reporting():
     """Class to structure the reporting and evaluation after the Simulation
     """
@@ -269,19 +311,70 @@ class Reporting():
             writer_obj.writerow(data)
             file.close()
             
-    def __create_training_reports(self, val_loss):
-        df = pd.DataFrame(val_loss, columns = ['val_loss'])
+    def __create_training_reports(self, val_loss, cfg=None):
+        ylim = _val_loss_ylim_from_cfg(cfg)
+        if _is_per_agent_val_loss(val_loss):
+            self.__create_training_reports_per_agent(val_loss, ylim=ylim)
+        else:
+            self.__create_training_reports_single(val_loss, ylim=ylim)
+
+    def __create_training_reports_single(self, val_loss, ylim=None):
+        df = pd.DataFrame(val_loss, columns=['val_loss'])
         path = Path(self.path_data, "Validation_Loss.csv")
         df.to_csv(path, index=False)
-        
-        fig = plt.figure()
-        plt.title("Validation_Loss")
-        plt.plot(df['val_loss'], label="val_loss")
-        plt.legend(loc=1)
+
+        fig, ax = plt.subplots()
+        ax.set_title("Validation_Loss")
+        ax.plot(df['val_loss'], label="val_loss")
+        ax.set_xlabel("epoch")
+        ax.set_ylabel("val_loss")
+        if ylim is not None:
+            ax.set_ylim(*ylim)
+        ax.legend(loc=1)
 
         path = Path(self.path_images, "val_loss.png")
         fig.savefig(path)
-        plt.close()
+        plt.close(fig)
+
+    def __create_training_reports_per_agent(self, val_loss, ylim=None):
+        # Per-agent histories may have different lengths (each agent has its
+        # own early-stopping). Pad to a common length with NaN so nan-aware
+        # aggregations can ignore stopped agents.
+        n_agents = len(val_loss)
+        max_len = max((len(h) for h in val_loss), default=0)
+        data = np.full((n_agents, max_len), np.nan)
+        for i, history in enumerate(val_loss):
+            data[i, :len(history)] = history
+
+        df = pd.DataFrame(
+            data.T,
+            columns=[f"agent_{i}" for i in range(n_agents)],
+        )
+        if max_len > 0:
+            df["mean_across_agents"] = np.nanmean(data, axis=0)
+            df["std_across_agents"] = np.nanstd(data, axis=0)
+            df["n_active_agents"] = np.sum(~np.isnan(data), axis=0)
+        df.to_csv(Path(self.path_data, "Validation_Loss.csv"), index=False)
+
+        fig, ax = plt.subplots()
+        ax.set_title("Validation_Loss")
+        x = np.arange(max_len)
+        for i in range(n_agents):
+            ax.plot(x, data[i], color="C0", alpha=0.35, linewidth=0.9,
+                    label=f"agent_{i}" if i < 5 else None)
+        if max_len > 0:
+            mean = np.nanmean(data, axis=0)
+            std = np.nanstd(data, axis=0)
+            ax.plot(x, mean, color="C0", linewidth=2.0, label="mean")
+            ax.fill_between(x, mean - std, mean + std, color="C0",
+                            alpha=0.18, label="±1 std")
+        ax.set_xlabel("epoch")
+        ax.set_ylabel("val_loss")
+        if ylim is not None:
+            ax.set_ylim(*ylim)
+        ax.legend(loc=1, fontsize=8)
+        fig.savefig(Path(self.path_images, "val_loss.png"))
+        plt.close(fig)
         
 
     def create_reporting(self, agent_list: list[Agent],
@@ -305,7 +398,7 @@ class Reporting():
 
             self.__create_market_reporting(market=market)
             
-            self.__create_training_reports(val_loss)
+            self.__create_training_reports(val_loss, cfg=cfg)
         
             self.__create_agent_reporting(agent_list=agent_list)
 

@@ -351,7 +351,7 @@ class LocalTimeMixerBackend(ForecastingBackend):
         # and agent.act(...) calls forecasting_model.predict(data).
         return None
 
-    def train(self, simulation, market, supply_chain, sc_agent_list) -> Optional[List[float]]:
+    def train(self, simulation, market, supply_chain, sc_agent_list) -> Optional[List[List[float]]]:
         return _train_local_timemixers(simulation, market, supply_chain, sc_agent_list, self.cfg)
 
 
@@ -607,14 +607,10 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
         )
     )
 
-    # Pad val_history to `epochs` with the last observed value so all agents
-    # contribute the same-length per-epoch series for plotting.
-    while len(val_history) < epochs:
-        val_history.append(val_history[-1] if val_history else float("nan"))
     return val_history
 
 
-def _train_local_timemixers(simulation, market, supply_chain, sc_agent_list, cfg: Dict[str, Any]) -> List[float]:
+def _train_local_timemixers(simulation, market, supply_chain, sc_agent_list, cfg: Dict[str, Any]) -> List[List[float]]:
     logger.info("Starting independent local TimeMixer training")
     device = select_gpu()
 
@@ -627,11 +623,14 @@ def _train_local_timemixers(simulation, market, supply_chain, sc_agent_list, cfg
             agent_label = f"level_{level}/agent_{agent_idx}"
             history = _train_one_agent(agent, agent_label, simulation, cfg, device)
             val_loss_list.append(history)
-            logger.info("%s | best val=%.6f", agent_label, float(np.min(history)))
+            logger.info(
+                "%s | epochs=%d best val=%.6f",
+                agent_label, len(history),
+                float(np.min(history)) if history else float("nan"),
+            )
 
-    val_loss = np.sum(np.array(val_loss_list), axis=0)  # shape (epochs,)
     logger.info(
-        "Finished local TimeMixer training. Per-epoch summed val loss: first=%.6f last=%.6f",
-        float(val_loss[0]), float(val_loss[-1]),
+        "Finished local TimeMixer training. Per-agent epoch counts: %s",
+        [len(h) for h in val_loss_list],
     )
-    return val_loss.tolist()
+    return val_loss_list
