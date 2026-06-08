@@ -170,18 +170,21 @@ class TimeMixerEmbeddingClient(nn.Module):
             [nn.LayerNorm(self.d_model) for _ in self.scales]
         )
 
-        # Client tail: local future multipredictor heads. The server returns a
-        # fused seasonal/trend state with feature size 2 * d_model for each scale.
+        # Client tail: local future multipredictor heads. Server returns a
+        # fused seasonal/trend state with shape [B, scale_lengths[i], 2*d_model].
+        # The head flattens the time tokens instead of pooling the last one, so
+        # every mixed token contributes to the forecast.
         self.future_heads = nn.ModuleList(
             [
                 nn.Sequential(
                     nn.LayerNorm(2 * self.d_model),
-                    nn.Linear(2 * self.d_model, int(ff_dim)),
+                    nn.Flatten(start_dim=-2),
+                    nn.Linear(self.scale_lengths[i] * 2 * self.d_model, int(ff_dim)),
                     nn.GELU(),
                     nn.Dropout(float(dropout)),
                     nn.Linear(int(ff_dim), self.horizon * self.output_dim),
                 )
-                for _ in self.scales
+                for i in range(len(self.scales))
             ]
         )
         self.scale_logits = nn.Parameter(torch.zeros(len(self.scales)))
@@ -224,9 +227,13 @@ class TimeMixerEmbeddingClient(nn.Module):
 
         preds: List[torch.Tensor] = []
         for scale_id, state in enumerate(server_states):
-            pooled = state[:, -1, :]
-            pred = self.future_heads[scale_id](pooled).view(
-                pooled.size(0), self.horizon, self.output_dim
+            # Server scale_lengths may differ from this client's scale_lengths
+            # if agents have heterogeneous local sequence_length. The head is
+            # sized for self.scale_lengths[scale_id], so defensively resize.
+            if state.size(1) != self.scale_lengths[scale_id]:
+                state = _resize_sequence(state, self.scale_lengths[scale_id])
+            pred = self.future_heads[scale_id](state).view(
+                state.size(0), self.horizon, self.output_dim
             )
             preds.append(pred)
 
@@ -654,6 +661,12 @@ def _train_split_timemixer_option_d(simulation, market, supply_chain, sc_agent_l
     common_batch_size = int(
         _cfg_get(cfg, "batch_size", min(int(a.batch_size) for a in level_agents))
     )
+    use_onecycle = bool(_cfg_get(cfg, "use_onecycle", True))
+    onecycle_total_epochs = int(_cfg_get(cfg, "onecycle_total_epochs", 100))
+    onecycle_pct_start = float(_cfg_get(cfg, "onecycle_pct_start", 0.3))
+    onecycle_div_factor = float(_cfg_get(cfg, "onecycle_div_factor", 25.0))
+    onecycle_final_div_factor = float(_cfg_get(cfg, "onecycle_final_div_factor", 1e4))
+    onecycle_anneal_strategy = str(_cfg_get(cfg, "onecycle_anneal_strategy", "cos"))
     loss_fn = nn.L1Loss()
 
     # The server uses the largest level-1 sequence length so it can accept a
@@ -761,6 +774,36 @@ def _train_split_timemixer_option_d(simulation, market, supply_chain, sc_agent_l
         len(channel_specs), len(level_agents), common_batch_size, scales, d_model,
     )
 
+    # OneCycleLR (one per optimizer, sized over `onecycle_total_epochs`).
+    schedulers: List[Optional[torch.optim.lr_scheduler.OneCycleLR]] = []
+    onecycle_total_steps = 0
+    if use_onecycle:
+        steps_per_epoch = max(1, len(trainloaders[0]))
+        onecycle_total_steps = steps_per_epoch * max(1, onecycle_total_epochs)
+        for opt in all_optimizers:
+            schedulers.append(
+                torch.optim.lr_scheduler.OneCycleLR(
+                    opt,
+                    max_lr=learning_rate,
+                    total_steps=onecycle_total_steps,
+                    pct_start=onecycle_pct_start,
+                    anneal_strategy=onecycle_anneal_strategy,
+                    div_factor=onecycle_div_factor,
+                    final_div_factor=onecycle_final_div_factor,
+                )
+            )
+        logger.info(
+            "Split TimeMixer OneCycleLR enabled: max_lr=%g total_steps=%d "
+            "pct_start=%g (warmup~%d steps / %d epochs); optimizers=%d",
+            learning_rate, onecycle_total_steps, onecycle_pct_start,
+            int(onecycle_total_steps * onecycle_pct_start),
+            int(onecycle_total_steps * onecycle_pct_start / steps_per_epoch),
+            len(all_optimizers),
+        )
+    else:
+        schedulers = [None] * len(all_optimizers)
+
+    global_step = 0
     early_stopping = EarlyStopping(
         patience=patience,
         verbose=True,
@@ -879,6 +922,11 @@ def _train_split_timemixer_option_d(simulation, market, supply_chain, sc_agent_l
                 max_norm=grad_clip,
             )
             _step_all(all_optimizers)
+            if onecycle_total_steps > 0 and global_step < onecycle_total_steps - 1:
+                for sch in schedulers:
+                    if sch is not None:
+                        sch.step()
+            global_step += 1
 
             loss_items = np.array([float(l.detach().cpu().item()) for l in losses])
             batch_losses.append(float(total_loss.detach().cpu().item()))
