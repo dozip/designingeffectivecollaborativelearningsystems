@@ -202,16 +202,20 @@ class LocalTimeMixer(nn.Module):
             [nn.Linear(self.d_model, self.d_model) for _ in range(self.num_scales)]
         )
 
+        # Each fused state has shape [B, scale_lengths[i], 2*d_model]. The head
+        # flattens the time tokens (instead of pooling the last one) so every
+        # mixed token contributes to the forecast.
         self.future_heads = nn.ModuleList(
             [
                 nn.Sequential(
                     nn.LayerNorm(2 * self.d_model),
-                    nn.Linear(2 * self.d_model, ff_dim),
+                    nn.Flatten(start_dim=-2),
+                    nn.Linear(self.scale_lengths[i] * 2 * self.d_model, ff_dim),
                     nn.GELU(),
                     nn.Dropout(dropout),
                     nn.Linear(ff_dim, self.horizon * self.output_dim),
                 )
-                for _ in self.scales
+                for i in range(self.num_scales)
             ]
         )
         self.scale_logits = nn.Parameter(torch.zeros(self.num_scales))
@@ -276,9 +280,8 @@ class LocalTimeMixer(nn.Module):
             if trend_state.size(1) != seasonal_state.size(1):
                 trend_state = _resize_sequence(trend_state, seasonal_state.size(1))
             fused = torch.cat([seasonal_state, trend_state], dim=-1)
-            pooled = fused[:, -1, :]
-            pred = self.future_heads[scale_id](pooled).view(
-                pooled.size(0), self.horizon, self.output_dim
+            pred = self.future_heads[scale_id](fused).view(
+                fused.size(0), self.horizon, self.output_dim
             )
             preds.append(pred)
 
@@ -351,7 +354,7 @@ class LocalTimeMixerBackend(ForecastingBackend):
         # and agent.act(...) calls forecasting_model.predict(data).
         return None
 
-    def train(self, simulation, market, supply_chain, sc_agent_list) -> Optional[List[float]]:
+    def train(self, simulation, market, supply_chain, sc_agent_list) -> Optional[List[List[float]]]:
         return _train_local_timemixers(simulation, market, supply_chain, sc_agent_list, self.cfg)
 
 
@@ -444,6 +447,12 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
     num_workers = int(tm_cfg.get("num_workers", 0))
     loss_cal = str(tm_cfg.get("loss_cal", "aggregated"))
     batch_size = int(tm_cfg.get("batch_size", int(agent.batch_size)))
+    use_onecycle = bool(tm_cfg.get("use_onecycle", True))
+    onecycle_total_epochs = int(tm_cfg.get("onecycle_total_epochs", 100))
+    onecycle_pct_start = float(tm_cfg.get("onecycle_pct_start", 0.3))
+    onecycle_div_factor = float(tm_cfg.get("onecycle_div_factor", 25.0))
+    onecycle_final_div_factor = float(tm_cfg.get("onecycle_final_div_factor", 1e4))
+    onecycle_anneal_strategy = str(tm_cfg.get("onecycle_anneal_strategy", "cos"))
     loss_fn = nn.L1Loss()
 
     logger.info("Training local TimeMixer for %s with %d retailer channels", agent_label, agent.num_retailer)
@@ -503,6 +512,38 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
         )
         val_data.append((x_val, y_val))
 
+    # OneCycleLR (one per optimizer). Sized over `onecycle_total_epochs`
+    # rather than the full sim.epochs budget so the warmup window is short
+    # enough that EarlyStopping doesn't fire mid-warmup.
+    schedulers: List[Optional[torch.optim.lr_scheduler.OneCycleLR]] = []
+    onecycle_total_steps = 0
+    if use_onecycle and trainloaders:
+        steps_per_epoch = max(1, len(trainloaders[0]))
+        onecycle_total_steps = steps_per_epoch * max(1, onecycle_total_epochs)
+        for opt in optimizers:
+            schedulers.append(
+                torch.optim.lr_scheduler.OneCycleLR(
+                    opt,
+                    max_lr=learning_rate,
+                    total_steps=onecycle_total_steps,
+                    pct_start=onecycle_pct_start,
+                    anneal_strategy=onecycle_anneal_strategy,
+                    div_factor=onecycle_div_factor,
+                    final_div_factor=onecycle_final_div_factor,
+                )
+            )
+        logger.info(
+            "%s | OneCycleLR enabled: max_lr=%g total_steps=%d pct_start=%g "
+            "(warmup~%d steps / %d epochs)",
+            agent_label, learning_rate, onecycle_total_steps,
+            onecycle_pct_start,
+            int(onecycle_total_steps * onecycle_pct_start),
+            int(onecycle_total_steps * onecycle_pct_start / steps_per_epoch),
+        )
+    else:
+        schedulers = [None] * len(optimizers)
+
+    global_step = 0
     early_stopping = EarlyStopping(
         patience=patience,
         verbose=True,
@@ -544,6 +585,11 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
                 max_norm=grad_clip,
             )
             _step_all(optimizers)
+            if onecycle_total_steps > 0 and global_step < onecycle_total_steps - 1:
+                for sch in schedulers:
+                    if sch is not None:
+                        sch.step()
+            global_step += 1
             batch_losses.append(float(loss.detach().cpu().item()))
 
         train_loss = float(np.mean(batch_losses)) if batch_losses else float("nan")
@@ -607,14 +653,10 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
         )
     )
 
-    # Pad val_history to `epochs` with the last observed value so all agents
-    # contribute the same-length per-epoch series for plotting.
-    while len(val_history) < epochs:
-        val_history.append(val_history[-1] if val_history else float("nan"))
     return val_history
 
 
-def _train_local_timemixers(simulation, market, supply_chain, sc_agent_list, cfg: Dict[str, Any]) -> List[float]:
+def _train_local_timemixers(simulation, market, supply_chain, sc_agent_list, cfg: Dict[str, Any]) -> List[List[float]]:
     logger.info("Starting independent local TimeMixer training")
     device = select_gpu()
 
@@ -627,11 +669,14 @@ def _train_local_timemixers(simulation, market, supply_chain, sc_agent_list, cfg
             agent_label = f"level_{level}/agent_{agent_idx}"
             history = _train_one_agent(agent, agent_label, simulation, cfg, device)
             val_loss_list.append(history)
-            logger.info("%s | best val=%.6f", agent_label, float(np.min(history)))
+            logger.info(
+                "%s | epochs=%d best val=%.6f",
+                agent_label, len(history),
+                float(np.min(history)) if history else float("nan"),
+            )
 
-    val_loss = np.sum(np.array(val_loss_list), axis=0)  # shape (epochs,)
     logger.info(
-        "Finished local TimeMixer training. Per-epoch summed val loss: first=%.6f last=%.6f",
-        float(val_loss[0]), float(val_loss[-1]),
+        "Finished local TimeMixer training. Per-agent epoch counts: %s",
+        [len(h) for h in val_loss_list],
     )
-    return val_loss.tolist()
+    return val_loss_list
