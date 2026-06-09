@@ -18,6 +18,39 @@ from . import register_backend
 
 logger = logging.getLogger('logger')
 
+
+class LSTMServer(nn.Module):
+    """Trainable server module for split LSTM.
+
+    Inserts a per-token MLP-with-residual between the LSTM-output concat
+    (`torch.cat([..], axis=2)`) and the dense client heads. With n_layers=0
+    this is a no-op identity — equivalent to the old "concat-only" server.
+
+    Operates on shape [B, L, in_features] where in_features = total number
+    of LSTM-output channels times each LSTM's hidden size. Returns the same
+    shape so the existing dense heads (NetLocal2 with `n_input=in_features`)
+    consume it unchanged.
+    """
+
+    def __init__(self, in_features: int, hidden_dim: int, n_layers: int = 1,
+                 dropout: float = 0.1):
+        super().__init__()
+        self.blocks = nn.ModuleList([
+            nn.Sequential(
+                nn.LayerNorm(in_features),
+                nn.Linear(in_features, hidden_dim),
+                nn.GELU(),
+                nn.Dropout(dropout),
+                nn.Linear(hidden_dim, in_features),
+            )
+            for _ in range(int(n_layers))
+        ])
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        for block in self.blocks:
+            x = x + block(x)
+        return x
+
 def _cfg_get_early_stopping(cfg, key, default):
     """Read one global early-stopping setting from YAML.
 
@@ -153,8 +186,14 @@ class LSTMSplitBackend(ForecastingBackend):
                 input_tensor = torch.tensor([np.array(data[l])], dtype=torch.float32).to(device)
                 output_lstm_list.append(lstm(input_tensor))
 
-        # 2.2) Feature Fusion
+        # 2.2) Feature Fusion + shared server pass (if attached).
         fusion = torch.cat((output_lstm_list), axis=2)
+        first_fm = level_agents[0].get_forecasting_model()
+        server_model = getattr(first_fm, "server_model", None)
+        if server_model is not None:
+            server_model.eval()
+            with torch.no_grad():
+                fusion = server_model(fusion)
 
         # 2.3) get dense output
         output_dense_list = []
@@ -183,6 +222,11 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
     loss_fn = nn.L1Loss()
     device = select_gpu()
     pin_memory = getattr(device, "type", None) == "cuda"
+
+    mcfg = cfg.get("multichannel", {}) if isinstance(cfg, dict) else {}
+    server_layers = int(mcfg.get("server_layers", 1))
+    server_hidden_dim_cfg = mcfg.get("server_hidden_dim", None)
+    server_dropout = float(mcfg.get("server_dropout", 0.1))
 
     agent_models = {}
 
@@ -282,6 +326,35 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
         val_data_list.append(agent_val_data)
 
     datasets = [None] * len(trainloaders)
+
+    # Build the trainable server module. Input is the concatenation of all
+    # LSTM outputs across every (agent, retailer); each LSTM emits `lstm_hidden_dim`
+    # features and there are `total_channels` such LSTM outputs.
+    total_channels = sum(
+        len(agent_models[k]['lstm_model']) for k in agent_models
+    )
+    server_in_features = total_channels * lstm_hidden_dim
+    server_hidden_dim = int(
+        server_hidden_dim_cfg if server_hidden_dim_cfg is not None
+        else server_in_features
+    )
+    server_model = LSTMServer(
+        in_features=server_in_features,
+        hidden_dim=server_hidden_dim,
+        n_layers=server_layers,
+        dropout=server_dropout,
+    ).to(device)
+    server_optimizer = torch.optim.SGD(
+        server_model.parameters(), lr=learning_rate, momentum=momentum
+    )
+    server_param_count = sum(p.numel() for p in server_model.parameters() if p.requires_grad)
+    logger.info(
+        "LSTM split server: in_features=%d hidden_dim=%d n_layers=%d dropout=%g "
+        "trainable_params=%d",
+        server_in_features, server_hidden_dim, server_layers, server_dropout,
+        server_param_count,
+    )
+
     # 3) Training
     val_loss = []
     # train over every epoch
@@ -295,6 +368,8 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
                 training_loss_epoch = [0] * (num_supplier)
 
             # set models to training mode
+            server_model.train()
+            server_optimizer.zero_grad()
             for agent_key in agent_models:
                 lstm_models = agent_models[agent_key]['lstm_model']
                 lstm_optimizers = agent_models[agent_key]['lstm_optim']
@@ -334,9 +409,11 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
                     lstm_outputs.append(output)
                     lstm_outputs_detached.append(output_detached)
 
-            # server routine
+            # server routine: trainable cross-channel MLP between concat and dense.
             logger.debug("Feature Fusion")
             fusion = torch.cat(lstm_outputs_detached, axis=2)
+            server_output = server_model(fusion)
+            server_output_detached = server_output.clone().detach().requires_grad_(True)
 
             # get dense output
             logger.debug("Output Dense")
@@ -345,7 +422,7 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
             for agent_key in agent_models:
                 dense_models = agent_models[agent_key]['dense_model']
                 for i, id in enumerate(agent_models[agent_key]['dataloader_ids']):
-                    output = dense_models[i](fusion)
+                    output = dense_models[i](server_output_detached)
                     output_detached = output.clone().detach().requires_grad_(True)
                     dense_outputs.append(output)
                     dense_outputs_detached.append(output_detached)
@@ -380,11 +457,16 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
             ##### BACKWARD #######
             ######################
 
-            ### backward for dense
+            ### backward for dense (populates server_output_detached.grad)
             for loss in loss_list:
                 loss.backward()
 
-            # get gradients of lstm
+            # backward through server: server_output_detached.grad -> fusion via cat
+            # -> lstm_outputs_detached[i].grad
+            if server_output_detached.grad is not None:
+                server_output.backward(server_output_detached.grad)
+
+            # get gradients of lstm (now populated via the cat in fusion)
             gradients = []
             for output in lstm_outputs_detached:
                 gradients.append(output.grad)
@@ -396,6 +478,8 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
             ######################
             ##### Optim Step #####
             ######################
+
+            server_optimizer.step()
 
             for agent_key in agent_models:
                 lstm_optim = agent_models[agent_key]['lstm_optim']
@@ -413,6 +497,7 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
         ######################
 
         # set models to eval mode
+        server_model.eval()
         for agent_key in agent_models:
             for model in agent_models[agent_key]['lstm_model']:
                 model.eval()
@@ -445,9 +530,10 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
                     lstm_outputs.append(output)
                     lstm_outputs_detached.append(output_detached)
 
-            # server routine
+            # server routine: trainable MLP between concat and dense.
             logger.debug("Feature Fusion")
             fusion = torch.cat(lstm_outputs_detached, axis=2)
+            fusion = server_model(fusion)
 
             # get dense output
             logger.debug("Output Dense")
@@ -494,7 +580,7 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
             snapshot = _snapshot_split_lstm(
                 agent_models=agent_models,
                 scaler_list=scaler_list,
-                server_model=None,
+                server_model=server_model,
             )
             early_stopping(sum_val_loss, snapshot)
 
@@ -506,7 +592,7 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
         scaler_list = _restore_split_lstm_snapshot(
             snapshot=best_snapshot,
             agent_models=agent_models,
-            server_model=None,
+            server_model=server_model,
         )
 
     for j, agent_key in enumerate(agent_models):
@@ -515,6 +601,9 @@ def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
 
         model = MultiChannel_LSTM(num_channels=sc_agent_list[1][j].num_retailer, lstm_model=lstm_models,
                                   dense_model=dense_models, scaler=scaler_list[j], device=device)
+        # Attach the shared server module so collaborative_predict can find it.
+        # The same server is shared across every agent's forecasting model.
+        model.server_model = server_model
 
         sc_agent_list[1][j].set_forecasting_model(model)
 
