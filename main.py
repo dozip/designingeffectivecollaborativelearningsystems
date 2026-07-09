@@ -1,4 +1,5 @@
 import os
+import argparse
 
 # Set these before importing numpy / torch-heavy modules.
 os.environ.setdefault("OMP_NUM_THREADS", "1")
@@ -21,6 +22,7 @@ from collections import deque
 import numpy as np
 import psutil
 import torch
+import yaml
 
 from helpers.helpers import (
     build_experiment_configs,
@@ -44,6 +46,289 @@ logging.basicConfig(
 
 logger = logging.getLogger("logger")
 logger.setLevel(logging.WARNING)
+
+
+# =============================================================================
+# Live logging helpers
+# =============================================================================
+#
+# The parent scheduler keeps a small live event log and a machine-readable
+# failure index. Each child process writes its own live run log. This keeps
+# tracebacks readable and avoids many experiment processes appending to one
+# shared output file at the same time.
+
+RUN_LIVE_LOG_FILENAME = "run_live.log"
+SCHEDULER_LIVE_LOG_FILENAME = "scheduler_live.log"
+FAILURES_JSONL_FILENAME = "failures.jsonl"
+
+
+def utc_timestamp_for_log() -> str:
+    """
+    Timestamp for log lines. Kept as local wall-clock time to match folder names
+    and terminal output.
+    """
+    return datetime.now().isoformat(timespec="seconds")
+
+
+def build_run_reporting_path(
+    reporting_path: Path,
+    timestamp: str,
+    experiment_name: str,
+    cfg: dict,
+    run_id: int,
+) -> Path:
+    """
+    Return the final run folder used by reporting and live logs.
+
+    Final layout:
+        Reporting/<timestamp>/<experiment_folder>/run_<run_id>/
+    """
+    parent_reporting_path = Path(reporting_path) / str(timestamp)
+    experiment_folder_name = build_experiment_folder_name(
+        experiment_name=experiment_name,
+        cfg=cfg,
+    )
+
+    return parent_reporting_path / experiment_folder_name / f"run_{run_id}"
+
+
+def build_run_live_log_path(
+    reporting_path: Path,
+    timestamp: str,
+    experiment_name: str,
+    cfg: dict,
+    run_id: int,
+) -> Path:
+    """
+    Return the per-run live log path.
+    """
+    return (
+        build_run_reporting_path(
+            reporting_path=reporting_path,
+            timestamp=timestamp,
+            experiment_name=experiment_name,
+            cfg=cfg,
+            run_id=run_id,
+        )
+        / RUN_LIVE_LOG_FILENAME
+    )
+
+
+def append_text_line(path: Path, line: str):
+    """
+    Append one line to a text file and flush immediately.
+
+    This is used only by the parent process for scheduler_live.log and
+    failures.jsonl, so no cross-process lock is needed here. Per-run output is
+    written by exactly one child process per run.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    with path.open("a", encoding="utf-8", buffering=1) as f:
+        f.write(line.rstrip("\n") + "\n")
+        f.flush()
+
+
+def append_scheduler_log(reporting_path: Path, timestamp: str, message: str):
+    """
+    Append a parent-scheduler event to Reporting/<timestamp>/scheduler_live.log.
+
+    This file is safe to inspect while the scheduler is running, for example:
+        tail -f Reporting/<timestamp>/scheduler_live.log
+    """
+    if not message:
+        return
+
+    try:
+        append_text_line(
+            Path(reporting_path) / str(timestamp) / SCHEDULER_LIVE_LOG_FILENAME,
+            f"[{utc_timestamp_for_log()}] {message}",
+        )
+    except Exception:
+        # Logging should never crash the scheduler.
+        pass
+
+
+def append_jsonl(path: Path, record: dict):
+    """
+    Append one JSON object as one line and flush immediately.
+    """
+    try:
+        append_text_line(
+            path,
+            json.dumps(record, ensure_ascii=False, default=str),
+        )
+    except Exception:
+        # Failure bookkeeping should never mask the original scheduler state.
+        pass
+
+
+def append_failure_record(
+    job: dict,
+    pid: int,
+    exitcode: int | None,
+    gpu_id: int | None,
+):
+    """
+    Append one failed-run record to Reporting/<timestamp>/failures.jsonl.
+
+    The full traceback/output lives in the per-run run_live.log named by the
+    run_log field.
+    """
+    reporting_path = Path(job["reporting_path"])
+    timestamp = str(job["timestamp"])
+    run_id = int(job["run_id"])
+    run_id_label = job.get("run_id_label", f"run_{run_id}")
+
+    run_log_path = build_run_live_log_path(
+        reporting_path=reporting_path,
+        timestamp=timestamp,
+        experiment_name=job["experiment_name"],
+        cfg=job["cfg"],
+        run_id=run_id,
+    )
+
+    failures_path = reporting_path / timestamp / FAILURES_JSONL_FILENAME
+
+    append_jsonl(
+        failures_path,
+        {
+            "time": utc_timestamp_for_log(),
+            "pid": pid,
+            "exitcode": exitcode,
+            "training_type": job.get("training_type"),
+            "experiment_name": job["experiment_name"],
+            "run_id": run_id,
+            "run_id_label": run_id_label,
+            "freq": job.get("freq", "NA"),
+            "noise": job.get("noise", "NA"),
+            "magnitude": job.get("magnitude", "NA"),
+            "lead_time": job.get("lead_time", "NA"),
+            "gpu_id": gpu_id,
+            "run_log": str(run_log_path),
+        },
+    )
+
+
+def get_process_entry_context(args, kwargs) -> dict:
+    """
+    Extract named values from run_single_experiment_process_entry arguments.
+
+    The scheduler currently passes positional args, but supporting kwargs makes
+    this wrapper safer if the entry point is reused later.
+    """
+    names = [
+        "experiment_id",
+        "total_experiments",
+        "experiment_name",
+        "cfg",
+        "run_id",
+        "timestamp",
+        "reporting_path",
+        "gpu_id",
+    ]
+
+    context = dict(zip(names, args))
+    context.update(kwargs)
+
+    return context
+
+
+def setup_child_run_live_logging(
+    experiment_name: str,
+    cfg: dict,
+    run_id: int,
+    timestamp: str,
+    reporting_path: Path,
+    gpu_id: int | None,
+):
+    """
+    Redirect the child process stdout/stderr file descriptors into its own
+    run_live.log and return a cleanup function.
+
+    This captures Python prints, logging output, many native-library messages,
+    and subprocess output emitted by the child. The parent dashboard is not
+    polluted by child output, and each run has a separate live-readable log file.
+    """
+    run_log_path = build_run_live_log_path(
+        reporting_path=Path(reporting_path),
+        timestamp=str(timestamp),
+        experiment_name=experiment_name,
+        cfg=cfg,
+        run_id=int(run_id),
+    )
+
+    run_log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Flush before changing file descriptors so buffered terminal output does
+    # not get mixed into the run log.
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except Exception:
+        pass
+
+    stdout_backup_fd = os.dup(1)
+    stderr_backup_fd = os.dup(2)
+    run_log_file = run_log_path.open("a", encoding="utf-8", buffering=1)
+
+    os.dup2(run_log_file.fileno(), 1)
+    os.dup2(run_log_file.fileno(), 2)
+
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(line_buffering=True, write_through=True)
+        except Exception:
+            pass
+
+    print("=" * 110, flush=True)
+    print(
+        f"[{utc_timestamp_for_log()}] START "
+        f"experiment={experiment_name} run_{run_id} "
+        f"pid={os.getpid()} gpu={gpu_id} log={run_log_path}",
+        flush=True,
+    )
+    print("=" * 110, flush=True)
+
+    def cleanup(status: str = "finished"):
+        try:
+            print("=" * 110, flush=True)
+            print(
+                f"[{utc_timestamp_for_log()}] END "
+                f"experiment={experiment_name} run_{run_id} "
+                f"pid={os.getpid()} status={status}",
+                flush=True,
+            )
+            print("=" * 110, flush=True)
+        except Exception:
+            pass
+
+        try:
+            sys.stdout.flush()
+            sys.stderr.flush()
+        except Exception:
+            pass
+
+        try:
+            os.dup2(stdout_backup_fd, 1)
+            os.dup2(stderr_backup_fd, 2)
+        except Exception:
+            pass
+
+        for fd in (stdout_backup_fd, stderr_backup_fd):
+            try:
+                os.close(fd)
+            except Exception:
+                pass
+
+        try:
+            run_log_file.flush()
+            run_log_file.close()
+        except Exception:
+            pass
+
+    return cleanup, run_log_path
 
 
 # =============================================================================
@@ -262,11 +547,12 @@ def get_run_start_id(cfg: dict, default: int = 0) -> int:
 
 def get_experiment_dashboard_values(cfg: dict) -> dict:
     """
-    Extract values that should be shown in the CLI dashboard.
+    Extract values that should be shown in the CLI dashboard and logs.
 
     For your YAML:
         frequency -> market.seasonality_frequncy
         noise     -> market.random_walk.variance
+        magnitude -> first matching magnitude path/key
         lead_time -> supply_chain.sc_levels.*.lead_time
     """
     freq = first_existing_cfg_path(
@@ -291,13 +577,61 @@ def get_experiment_dashboard_values(cfg: dict) -> dict:
         default="NA",
     )
 
+    magnitude = first_existing_cfg_path(
+        cfg,
+        paths=[
+            ["market", "demand_magnitude"],
+            ["market", "seasonality_magnitude"],
+            ["market", "magnitude"],
+            ["market", "base_demand_magnitude"],
+            ["demand_magnitude"],
+            ["seasonality_magnitude"],
+            ["magnitude"],
+        ],
+        default=None,
+    )
+
+    if magnitude is None:
+        magnitude = find_cfg_value(
+            cfg,
+            candidate_keys=[
+                "demand_magnitude",
+                "seasonality_magnitude",
+                "base_demand_magnitude",
+                "magnitude",
+            ],
+            default="NA",
+        )
+
     lead_time = get_supply_chain_lead_value(cfg, default="NA")
+
+    dataset_name = first_existing_cfg_path(
+        cfg,
+        paths=[
+            ["market", "dataset_name"],
+            ["market", "product_name"],
+        ],
+        default="NA",
+    )
+
+    data_source = first_existing_cfg_path(
+        cfg,
+        paths=[
+            ["market", "data_scource"],
+            ["market", "data_source"],
+        ],
+        default="NA",
+    )
 
     return {
         "freq": compact_value_for_path(freq),
         "noise": compact_value_for_path(noise),
+        "magnitude": compact_value_for_path(magnitude),
         "lead_time": compact_value_for_path(lead_time),
+        "dataset": compact_value_for_path(dataset_name),
+        "data_source": compact_value_for_path(data_source),
     }
+
 def build_experiment_folder_name(experiment_name: str, cfg: dict) -> str:
     """
     Final experiment folder format:
@@ -306,10 +640,260 @@ def build_experiment_folder_name(experiment_name: str, cfg: dict) -> str:
     Example:
         timesfm_zero_shot_001
 
-    The frequency/noise/lead_time values are shown in the CLI dashboard,
+    The frequency/noise/magnitude/lead_time values are shown in the CLI dashboard,
     not duplicated in the folder name.
     """
     return safe_experiment_name(experiment_name)
+
+
+# =============================================================================
+# Model checkpointing
+# =============================================================================
+
+# Only these training types produce newly trained model weights that are useful
+# to save for later analysis. Zero-shot/pretrained and no-training baselines are
+# intentionally excluded.
+MODEL_SAVE_TRAINING_TYPES = {
+    "local_multichannel",
+    "split_multichannel",
+    "local_timemixer",
+    "split_timemixer",
+    "split_timemixer_option_d",  # accepted as an alias/safety fallback
+    "local_patchtst",
+    "split_patchtst",
+}
+
+
+def normalize_training_type(cfg: dict) -> str:
+    """
+    Read cfg['sim']['training_type'] as a normalized lowercase string.
+    """
+    training_type = cfg.get("sim", {}).get("training_type", None)
+
+    if training_type is None:
+        return ""
+
+    return str(training_type).strip().lower()
+
+
+def should_save_model_for_cfg(cfg: dict) -> bool:
+    """
+    Decide whether this experiment should write a trained-model checkpoint.
+    """
+    return normalize_training_type(cfg) in MODEL_SAVE_TRAINING_TYPES
+
+
+def model_state_dict_cpu(model) -> dict:
+    """
+    Return a CPU-only copy of a torch module state_dict.
+
+    Saving CPU tensors makes the checkpoint easier to inspect/reload on machines
+    without the original CUDA device.
+    """
+    return {
+        key: value.detach().cpu()
+        for key, value in model.state_dict().items()
+    }
+
+
+def module_list_state_dict_cpu(models) -> list[dict]:
+    """
+    Save an nn.ModuleList or normal Python list/tuple of torch modules.
+    """
+    return [
+        model_state_dict_cpu(model)
+        for model in list(models)
+    ]
+
+
+def get_agent_forecasting_model(agent):
+    """
+    Safely read the forecasting model attached to an agent.
+    """
+    if hasattr(agent, "get_forecasting_model"):
+        try:
+            return agent.get_forecasting_model()
+        except Exception:
+            return None
+
+    return getattr(agent, "forecasting_model", None)
+
+
+def collect_server_model_once(sc_agent_list):
+    """
+    For split PatchTST/TimeMixer, the same shared server_model is attached to
+    the forecasting model of each participating agent. Save it once.
+
+    split_multichannel currently has no trainable server module; in that case
+    this returns None.
+    """
+    seen_ids = set()
+
+    for level_agents in sc_agent_list:
+        for agent in level_agents:
+            fm = get_agent_forecasting_model(agent)
+
+            if fm is None or not hasattr(fm, "server_model"):
+                continue
+
+            server_model = fm.server_model
+
+            if server_model is None:
+                continue
+
+            if id(server_model) in seen_ids:
+                continue
+
+            seen_ids.add(id(server_model))
+            return server_model
+
+    return None
+
+
+def build_agent_model_checkpoint_entry(level_idx: int, agent_idx: int, agent) -> dict | None:
+    """
+    Export the trainable parts of one agent's attached forecasting model.
+
+    This supports the current model containers used by:
+      - local_multichannel / split_multichannel: lstm_model + dense_model
+      - local_timemixer / local_patchtst: models
+      - split_timemixer / split_patchtst: client_models + shared server_model
+    """
+    fm = get_agent_forecasting_model(agent)
+
+    if fm is None:
+        return None
+
+    entry = {
+        "level_idx": level_idx,
+        "agent_idx": agent_idx,
+        "num_retailer": getattr(agent, "num_retailer", None),
+        "sequence_length": getattr(agent, "sequence_length", None),
+        "forecasting_model_class": type(fm).__name__,
+    }
+
+    saved_any_model = False
+
+    # local_multichannel / split_multichannel
+    if hasattr(fm, "lstm_model") and fm.lstm_model is not None:
+        entry["lstm_model"] = module_list_state_dict_cpu(fm.lstm_model)
+        saved_any_model = True
+
+    if hasattr(fm, "dense_model") and fm.dense_model is not None:
+        entry["dense_model"] = module_list_state_dict_cpu(fm.dense_model)
+        saved_any_model = True
+
+    # local_timemixer / local_patchtst
+    if hasattr(fm, "models") and fm.models is not None:
+        entry["models"] = module_list_state_dict_cpu(fm.models)
+        saved_any_model = True
+
+    # split_timemixer / split_patchtst client-side modules
+    if hasattr(fm, "client_models") and fm.client_models is not None:
+        entry["client_models"] = module_list_state_dict_cpu(fm.client_models)
+        saved_any_model = True
+
+    # The scaler is required to interpret model outputs later.
+    # torch.save can pickle sklearn StandardScaler objects.
+    if hasattr(fm, "scaler"):
+        entry["scaler"] = fm.scaler
+
+    # Keep lightweight architecture metadata that may help with later analysis.
+    for attr in [
+        "horizon",
+        "scales",
+        "scale_lengths",
+        "num_patches",
+        "device",
+    ]:
+        if hasattr(fm, attr):
+            value = getattr(fm, attr)
+            entry[attr] = str(value) if attr == "device" else value
+
+    if not saved_any_model:
+        return None
+
+    return entry
+
+
+def save_trained_forecasting_models(
+    cfg: dict,
+    sc_agent_list,
+    output_path: Path,
+    run_id: int,
+    val_loss,
+):
+    """
+    Save trained forecasting models for the selected local/split training types.
+
+    Final files:
+        <run_folder>/model/trained_models.pt
+        <run_folder>/model/trained_models_metadata.json
+
+    The .pt file is the analysis checkpoint. It includes:
+      - cfg
+      - run_id
+      - val_loss
+      - per-agent trainable modules
+      - per-agent scalers
+      - shared server_model for split PatchTST/TimeMixer, saved once
+    """
+    training_type = normalize_training_type(cfg)
+
+    if training_type not in MODEL_SAVE_TRAINING_TYPES:
+        return
+
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    checkpoint = {
+        "format_version": 1,
+        "training_type": training_type,
+        "run_id": run_id,
+        "val_loss": val_loss,
+        "cfg": cfg,
+        "agents": [],
+    }
+
+    for level_idx, level_agents in enumerate(sc_agent_list):
+        for agent_idx, agent in enumerate(level_agents):
+            entry = build_agent_model_checkpoint_entry(
+                level_idx=level_idx,
+                agent_idx=agent_idx,
+                agent=agent,
+            )
+
+            if entry is not None:
+                checkpoint["agents"].append(entry)
+
+    server_model = collect_server_model_once(sc_agent_list)
+
+    if server_model is not None:
+        checkpoint["server_model_class"] = type(server_model).__name__
+        checkpoint["server_model"] = model_state_dict_cpu(server_model)
+
+    checkpoint_path = output_path / "trained_models.pt"
+    torch.save(checkpoint, checkpoint_path)
+
+    metadata = {
+        "format_version": 1,
+        "training_type": training_type,
+        "run_id": run_id,
+        "saved_file": checkpoint_path.name,
+        "contains_server_model": server_model is not None,
+        "server_model_class": type(server_model).__name__ if server_model is not None else None,
+        "num_saved_agents": len(checkpoint["agents"]),
+        "agent_model_classes": sorted(
+            {
+                entry.get("forecasting_model_class", "unknown")
+                for entry in checkpoint["agents"]
+            }
+        ),
+    }
+
+    metadata_path = output_path / "trained_models_metadata.json"
+    with metadata_path.open("w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2, ensure_ascii=False, default=str)
+
 
 def save_config_once(experiment_reporting_path: Path, cfg: dict):
     """
@@ -896,6 +1480,7 @@ def render_dashboard(
                 f"{run_id_label} | "
                 f"freq={job.get('freq', 'NA')} | "
                 f"noise={job.get('noise', 'NA')} | "
+                f"magnitude={job.get('magnitude', 'NA')} | "
                 f"lead_time={job.get('lead_time', 'NA')} | "
                 f"GPU {info['gpu_id']}"
             )
@@ -1063,6 +1648,15 @@ def run_single_experiment(
     )
 
     run_folder_name = f"run_{run_id}"
+    run_reporting_path = experiment_reporting_path / run_folder_name
+
+    save_trained_forecasting_models(
+        cfg=cfg,
+        sc_agent_list=sc_agent_list,
+        output_path=run_reporting_path / "model",
+        run_id=run_id,
+        val_loss=val_loss,
+    )
 
     # Let the existing Reporting class write wherever it normally writes, but
     # isolate that output in a hidden raw folder first. Then normalize it into
@@ -1116,19 +1710,33 @@ def run_single_experiment_process_entry(*args, **kwargs):
     os._exit(...) immediately terminates the child process after the experiment
     finishes or fails. The OS/NVIDIA driver then releases the CUDA context and
     GPU memory.
+
+    The wrapper also sets up per-run live logging before the experiment starts,
+    so any traceback produced here is written to:
+        Reporting/<timestamp>/<experiment_folder>/run_<id>/run_live.log
     """
+    cleanup_live_logging = None
+    exit_code = 0
+    status = "finished"
+
     try:
+        context = get_process_entry_context(args, kwargs)
+
+        cleanup_live_logging, _run_log_path = setup_child_run_live_logging(
+            experiment_name=context["experiment_name"],
+            cfg=context["cfg"],
+            run_id=context["run_id"],
+            timestamp=context["timestamp"],
+            reporting_path=context["reporting_path"],
+            gpu_id=context.get("gpu_id"),
+        )
+
         run_single_experiment(*args, **kwargs)
 
-        try:
-            sys.stdout.flush()
-            sys.stderr.flush()
-        except Exception:
-            pass
-
-        os._exit(0)
-
     except BaseException:
+        exit_code = 1
+        status = "failed"
+
         try:
             logger.exception("Experiment process failed.")
             sys.stdout.flush()
@@ -1136,8 +1744,20 @@ def run_single_experiment_process_entry(*args, **kwargs):
         except Exception:
             pass
 
-        os._exit(1)
+    finally:
+        if cleanup_live_logging is not None:
+            try:
+                cleanup_live_logging(status=status)
+            except Exception:
+                pass
+        else:
+            try:
+                sys.stdout.flush()
+                sys.stderr.flush()
+            except Exception:
+                pass
 
+        os._exit(exit_code)
 
 # =============================================================================
 # Process management
@@ -1203,12 +1823,19 @@ def collect_finished_processes(
 
         if process.exitcode != 0:
             failed_jobs.append(info)
+            append_failure_record(
+                job=job,
+                pid=pid,
+                exitcode=process.exitcode,
+                gpu_id=gpu_id,
+            )
             last_event = (
                 f"FAILED {job.get('training_type')} | "
                 f"{job['experiment_name']} | "
                 f"{run_id_label} | "
                 f"freq={job.get('freq', 'NA')} | "
                 f"noise={job.get('noise', 'NA')} | "
+                f"magnitude={job.get('magnitude', 'NA')} | "
                 f"lead_time={job.get('lead_time', 'NA')} | "
                 f"exitcode={process.exitcode}"
             )
@@ -1220,6 +1847,7 @@ def collect_finished_processes(
                 f"{run_id_label} | "
                 f"freq={job.get('freq', 'NA')} | "
                 f"noise={job.get('noise', 'NA')} | "
+                f"magnitude={job.get('magnitude', 'NA')} | "
                 f"lead_time={job.get('lead_time', 'NA')}"
             )
 
@@ -1250,6 +1878,7 @@ def terminate_all_active_processes(active_processes: dict):
                 f"{run_id_label}, "
                 f"freq={job.get('freq', 'NA')}, "
                 f"noise={job.get('noise', 'NA')}, "
+                f"magnitude={job.get('magnitude', 'NA')}, "
                 f"lead_time={job.get('lead_time', 'NA')}, "
                 f"GPU={info['gpu_id']}"
             )
@@ -1312,6 +1941,31 @@ def run_load_balanced(
     done_jobs = 0
     total_jobs = len(jobs)
     last_event = "Scheduler started"
+    scheduler_reporting_path = jobs[0]["reporting_path"]
+    scheduler_timestamp = jobs[0]["timestamp"]
+    last_logged_event = None
+
+    def record_scheduler_event(message: str, force: bool = False):
+        """
+        Write meaningful scheduler state changes to scheduler_live.log.
+
+        Duplicate waiting messages are skipped so a one-second poll interval does
+        not flood the log with identical lines.
+        """
+        nonlocal last_logged_event
+
+        if not message:
+            return
+
+        if force or message != last_logged_event:
+            append_scheduler_log(
+                reporting_path=scheduler_reporting_path,
+                timestamp=scheduler_timestamp,
+                message=message,
+            )
+            last_logged_event = message
+
+    record_scheduler_event(last_event, force=True)
 
     psutil.cpu_percent(interval=None)
 
@@ -1327,6 +1981,7 @@ def run_load_balanced(
 
             if finished_event:
                 last_event = finished_event
+                record_scheduler_event(last_event)
 
             render_dashboard(
                 total_jobs=total_jobs,
@@ -1351,6 +2006,7 @@ def run_load_balanced(
                     f"CPU={cpu_usage:.1f}%/{max_cpu_usage:.1f}% | "
                     f"RAM={ram_usage:.1f}%/{max_ram_usage:.1f}%"
                 )
+                record_scheduler_event(last_event)
 
                 render_dashboard(
                     total_jobs=total_jobs,
@@ -1421,10 +2077,12 @@ def run_load_balanced(
                     f"{run_id_label} | "
                     f"freq={job.get('freq', 'NA')} | "
                     f"noise={job.get('noise', 'NA')} | "
+                    f"magnitude={job.get('magnitude', 'NA')} | "
                     f"lead_time={job.get('lead_time', 'NA')} | "
                     f"PID {process.pid} | "
                     f"GPU {gpu_id}"
                 )
+                record_scheduler_event(last_event)
 
                 started_any = True
 
@@ -1459,6 +2117,8 @@ def run_load_balanced(
                         f"running={len(active_processes)}"
                     )
 
+                record_scheduler_event(last_event)
+
                 render_dashboard(
                     total_jobs=total_jobs,
                     done_jobs=done_jobs,
@@ -1471,6 +2131,9 @@ def run_load_balanced(
 
                 time.sleep(poll_seconds)
 
+        last_event = "All jobs finished."
+        record_scheduler_event(last_event, force=True)
+
         render_dashboard(
             total_jobs=total_jobs,
             done_jobs=done_jobs,
@@ -1478,7 +2141,7 @@ def run_load_balanced(
             pending_jobs=pending_jobs,
             active_processes=active_processes,
             active_gpu_jobs=active_gpu_jobs,
-            last_event="All jobs finished.",
+            last_event=last_event,
         )
 
         if failed_jobs:
@@ -1493,13 +2156,15 @@ def run_load_balanced(
                     f"{run_id_label} "
                     f"freq={job.get('freq', 'NA')} "
                     f"noise={job.get('noise', 'NA')} "
+                    f"magnitude={job.get('magnitude', 'NA')} "
                     f"lead_time={job.get('lead_time', 'NA')} "
                     f"exitcode={info['process'].exitcode}"
                 )
 
-            raise RuntimeError(
-                f"{len(failed_jobs)} experiment job(s) failed: {failed_names}"
-            )
+            failure_summary = f"{len(failed_jobs)} experiment job(s) failed: {failed_names}"
+            record_scheduler_event(failure_summary, force=True)
+
+            raise RuntimeError(failure_summary)
 
     except KeyboardInterrupt:
         terminate_all_active_processes(active_processes)
@@ -1507,36 +2172,238 @@ def run_load_balanced(
 
 
 # =============================================================================
-# Entry point
+# Missing experiment config support
 # =============================================================================
 
-def run():
-    script_directory = Path(__file__).parent
-    # config_path = script_directory / "config.yaml"
-    config_path = script_directory / "final_full_factorial_config_compact_names.yaml"
+# -----------------------------------------------------------------------------
+# Edit only these settings.
+# -----------------------------------------------------------------------------
+# True  -> run only experiment_name + run_ids listed in missing_experiments.yaml
+# False -> original behavior: run all experiments from all_experiments.yaml
+USE_MISSING_CONFIG = False
 
-    experiment_configs = build_experiment_configs(config_path)
+# This file determines exactly which experiments and which run IDs are rerun.
+# Expected format:
+#
+# source_config: all_experiments.yaml
+# reporting_timestamp: 2026_06_11_RERUN_MISSING
+# experiments:
+#   - name: timesfm_zero_shot_026
+#     run_ids: [3, 4, 5, 6, 8, 9]
+MISSING_CONFIG_FILENAME = "missing_experiments.yaml"
 
-    timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+# Used only when USE_MISSING_CONFIG = False, or as a fallback.
+# FULL_CONFIG_FILENAME = "experiment_config_weekly_periods_no_chronos_timesfm.yaml"
+FULL_CONFIG_FILENAME = "real_world_usda_4datasets_lt123.yaml"
+FULL_CONFIG_FILENAME = "real_world_4datasets_cleaned_659_config.yaml"
+FULL_CONFIG_FILENAME = "real_world_usda_config_dynamic_supplier_allocation.yaml"
+# FULL_CONFIG_FILENAME = "all_experiments_corrected.yaml"
 
-    reporting_path = script_directory / "Reporting"
-    reporting_path.mkdir(parents=True, exist_ok=True)
+# None means:
+#   - if USE_MISSING_CONFIG=True and missing_experiments.yaml contains
+#     reporting_timestamp, use that value
+#   - otherwise create a fresh timestamp from the current datetime
+# You can also set this manually, for example:
+# REPORTING_TIMESTAMP_OVERRIDE = "2026_06_11_RERUN_MISSING"
+REPORTING_TIMESTAMP_OVERRIDE = None
 
+# Base Reporting directory.
+REPORTING_FOLDER_NAME = "Reporting"
+
+# Safety switch.
+# True  -> only print selected jobs, do not start experiments
+# False -> actually run selected jobs
+DRY_RUN = False
+
+# Scheduler limits.
+MAX_PARALLEL_PROCESSES = 50
+MAX_CPU_USAGE = 85.0
+MAX_RAM_USAGE = 85.0
+MAX_GPU_USAGE = 70.0
+MAX_GPU_MEMORY_USAGE = 0.85
+MAX_JOBS_PER_GPU = 2
+POLL_SECONDS = 1.0
+
+
+def normalize_run_ids(run_ids_raw) -> list[int]:
+    """
+    Normalize run_ids from YAML.
+
+    Supports:
+        run_ids: [0, 1, 5]
+        run_ids: "0, 1, 5"
+        run_ids: "run_0, run_1"
+    """
+    if run_ids_raw is None:
+        return []
+
+    if isinstance(run_ids_raw, list):
+        return sorted({int(x) for x in run_ids_raw})
+
+    if isinstance(run_ids_raw, tuple):
+        return sorted({int(x) for x in run_ids_raw})
+
+    text = str(run_ids_raw).strip()
+
+    if not text:
+        return []
+
+    import re
+
+    return sorted({int(x) for x in re.findall(r"\d+", text)})
+
+
+def load_missing_experiments_config(
+    missing_config_path: Path,
+    script_directory: Path,
+) -> tuple[Path, str | None, dict[str, list[int]]]:
+    """
+    Load missing_experiments.yaml.
+
+    Expected format:
+
+        source_config: all_experiments.yaml
+        reporting_timestamp: 2026_06_11_RERUN_MISSING
+
+        experiments:
+          - name: timesfm_zero_shot_022
+            run_ids: [0, 4, 9]
+
+    Returns:
+        source_config_path
+        reporting_timestamp
+        missing_run_ids_by_experiment
+    """
+    missing_config_path = Path(missing_config_path)
+
+    if not missing_config_path.exists():
+        raise FileNotFoundError(
+            f"Missing config does not exist: {missing_config_path}"
+        )
+
+    with missing_config_path.open("r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f)
+
+    if not isinstance(raw, dict):
+        raise ValueError(
+            f"Missing config must be a YAML dictionary: {missing_config_path}"
+        )
+
+    source_config_raw = raw.get("source_config", FULL_CONFIG_FILENAME)
+    source_config_path = Path(source_config_raw)
+
+    if not source_config_path.is_absolute():
+        source_config_path = script_directory / source_config_path
+
+    reporting_timestamp = raw.get("reporting_timestamp", None)
+
+    experiments = raw.get("experiments", [])
+
+    if not isinstance(experiments, list) or not experiments:
+        raise ValueError(
+            "Missing config must contain a non-empty 'experiments' list."
+        )
+
+    missing_by_experiment: dict[str, list[int]] = {}
+
+    for item in experiments:
+        if not isinstance(item, dict):
+            raise ValueError(f"Invalid experiment entry: {item!r}")
+
+        experiment_name = str(item.get("name", "")).strip()
+
+        if not experiment_name:
+            raise ValueError(f"Experiment entry without name: {item!r}")
+
+        run_ids = normalize_run_ids(item.get("run_ids"))
+
+        if not run_ids:
+            raise ValueError(
+                f"Experiment {experiment_name!r} has no run_ids."
+            )
+
+        if experiment_name in missing_by_experiment:
+            merged = set(missing_by_experiment[experiment_name])
+            merged.update(run_ids)
+            missing_by_experiment[experiment_name] = sorted(merged)
+        else:
+            missing_by_experiment[experiment_name] = run_ids
+
+    return source_config_path, reporting_timestamp, missing_by_experiment
+
+
+def build_selected_jobs(
+    experiment_configs,
+    missing_by_experiment: dict[str, list[int]] | None,
+    timestamp: str,
+    reporting_path: Path,
+) -> list[dict]:
+    """
+    Build jobs either for all runs, or for exact run_ids from missing config.
+
+    If missing_by_experiment is None:
+        original behavior:
+            run_id = run_start_id + run_offset
+            for run_offset in range(simulation_runs)
+
+    If missing_by_experiment is given:
+        rerun behavior:
+            use exactly the run_ids from missing_experiments.yaml
+    """
     jobs = []
+
+    experiment_names_in_yaml = {
+        experiment_name
+        for experiment_name, _cfg in experiment_configs
+    }
+
+    if missing_by_experiment is not None:
+        requested_names = set(missing_by_experiment.keys())
+        missing_names = sorted(requested_names - experiment_names_in_yaml)
+
+        if missing_names:
+            raise ValueError(
+                "These experiments are requested in missing_experiments.yaml "
+                "but not found in the current source config:\n"
+                + "\n".join(f"  - {name}" for name in missing_names)
+            )
 
     for experiment_id, (experiment_name, cfg) in enumerate(experiment_configs):
         sim_runs = int(cfg["sim"]["simulation_runs"])
         run_start_id = get_run_start_id(cfg, default=0)
         training_type = cfg["sim"].get("training_type", None)
         needs_gpu = cfg_needs_gpu(cfg)
-
         dashboard_values = get_experiment_dashboard_values(cfg)
 
-        for run_offset in range(sim_runs):
-            # Absolute run ID.
-            # If sim.run_start_id is set, this starts there instead of 0.
-            # The run_id is used for folder names, Reporting, and the seed.
-            run_id = run_start_id + run_offset
+        if missing_by_experiment is None:
+            # Original full-run mode.
+            run_ids = [
+                run_start_id + run_offset
+                for run_offset in range(sim_runs)
+            ]
+        else:
+            # Missing-only mode.
+            # Skip every experiment not explicitly listed in missing_experiments.yaml.
+            if experiment_name not in missing_by_experiment:
+                continue
+
+            # Use exactly these run IDs, no range expansion.
+            run_ids = sorted(missing_by_experiment[experiment_name])
+
+        valid_run_ids = {
+            run_start_id + run_offset
+            for run_offset in range(sim_runs)
+        }
+
+        for run_id in run_ids:
+            if missing_by_experiment is not None and run_id not in valid_run_ids:
+                raise ValueError(
+                    f"Requested {experiment_name} run_{run_id}, but this run_id "
+                    f"is outside the configured range from the source config. "
+                    f"Configured valid run_ids are: {sorted(valid_run_ids)}"
+                )
+
+            run_offset = run_id - run_start_id
             run_id_label = f"run_{run_id}"
 
             jobs.append(
@@ -1550,7 +2417,7 @@ def run():
                     # It is used for seeds and Reporting.
                     "run_id": run_id,
 
-                    # Keep the zero-based offset too, in case you need it later
+                    # Keep the offset too, in case you need it later
                     # for debugging or dashboard extensions.
                     "run_offset": run_offset,
 
@@ -1565,33 +2432,245 @@ def run():
                     # Dashboard fields.
                     "freq": dashboard_values["freq"],
                     "noise": dashboard_values["noise"],
+                    "magnitude": dashboard_values["magnitude"],
                     "lead_time": dashboard_values["lead_time"],
+                    "dataset": dashboard_values.get("dataset", "NA"),
+                    "data_source": dashboard_values.get("data_source", "NA"),
                 }
             )
+
+    return jobs
+
+
+def print_job_selection_summary(
+    jobs: list[dict],
+    config_path: Path,
+    reporting_path: Path,
+    timestamp: str,
+    missing_by_experiment: dict[str, list[int]] | None,
+):
+    print()
+    print("=" * 110)
+    print("SCHEDULER JOB SELECTION")
+    print("=" * 110)
+    print(f"Config: {config_path}")
+    print(f"Reporting path: {reporting_path}")
+    print(f"Timestamp: {timestamp}")
+    print(f"Reporting folder: {Path(reporting_path) / str(timestamp)}")
+    print(f"Jobs selected: {len(jobs)}")
+
+    if missing_by_experiment is not None:
+        requested_runs = sum(len(v) for v in missing_by_experiment.values())
+        print(f"Missing-config experiments: {len(missing_by_experiment)}")
+        print(f"Missing-config requested runs: {requested_runs}")
+
+        if requested_runs != len(jobs):
+            print()
+            print("WARNING:")
+            print(
+                f"  missing_experiments.yaml requested {requested_runs} runs, "
+                f"but {len(jobs)} jobs were selected."
+            )
+            print(
+                "  This usually means some requested experiments were not found "
+                "or some run_ids were invalid."
+            )
+
+    print("-" * 110)
+
+    by_training_type = {}
+    by_configuration = {}
+
+    for job in jobs:
+        training_type = str(job.get("training_type"))
+        by_training_type[training_type] = by_training_type.get(training_type, 0) + 1
+
+        configuration_key = (
+            training_type,
+            str(job.get("freq", "NA")),
+            str(job.get("noise", "NA")),
+            str(job.get("magnitude", "NA")),
+            str(job.get("lead_time", "NA")),
+        )
+        by_configuration[configuration_key] = by_configuration.get(configuration_key, 0) + 1
+
+    print("Runs by training type:")
+    for training_type in sorted(by_training_type):
+        print(f"  {training_type}: {by_training_type[training_type]} runs")
+
+    print("-")
+    print("Runs by configuration:")
+    for (training_type, freq, noise, magnitude, lead_time), count in sorted(by_configuration.items()):
+        print(
+            f"  {training_type} | "
+            f"freq={freq} | "
+            f"noise={noise} | "
+            f"magnitude={magnitude} | "
+            f"lead_time={lead_time}: "
+            f"{count} runs"
+        )
+
+    print("=" * 110)
+    print()
+
+
+def print_dry_run_jobs(jobs: list[dict]):
+    print("DRY RUN ONLY. These jobs would be started:")
+    print("-" * 110)
+
+    for job in jobs:
+        print(
+            f"{job.get('training_type')} | "
+            f"{job['experiment_name']} | "
+            f"{job['run_id_label']} | "
+            f"freq={job.get('freq', 'NA')} | "
+            f"noise={job.get('noise', 'NA')} | "
+            f"magnitude={job.get('magnitude', 'NA')} | "
+            f"lead_time={job.get('lead_time', 'NA')} | "
+            f"dataset={job.get('dataset', 'NA')} | "
+            f"needs_gpu={job.get('needs_gpu')}"
+        )
+
+    print("-" * 110)
+    print(f"Total dry-run jobs: {len(jobs)}")
+
+
+# =============================================================================
+# Entry point
+# =============================================================================
+
+def parse_cli_args(argv=None):
+    """
+    Parse command-line arguments.
+
+    Example:
+        python3 main.py --name "myexperiment"
+
+    This creates:
+        Reporting/myexperiment_<timestamp>/...
+    """
+    parser = argparse.ArgumentParser(
+        description="Run the experiment scheduler."
+    )
+
+    parser.add_argument(
+        "--name",
+        type=str,
+        default=None,
+        help=(
+            "Optional prefix for the top-level Reporting folder. "
+            "Example: --name 'my experiment' creates "
+            "Reporting/my_experiment_<timestamp>/"
+        ),
+    )
+
+    return parser.parse_args(argv)
+
+
+def build_reporting_timestamp(timestamp: str, run_name: str | None) -> str:
+    """
+    Add the optional CLI name to the highest-level Reporting folder only.
+
+    With --name myexperiment:
+        Reporting/myexperiment_<timestamp>/<experiment_name_from_config>/run_0/...
+
+    Without --name:
+        Reporting/<timestamp>/<experiment_name_from_config>/run_0/...
+    """
+    if run_name is None:
+        return str(timestamp)
+
+    safe_name = safe_experiment_name(str(run_name).strip()).strip("_.-")
+
+    if not safe_name:
+        return str(timestamp)
+
+    return f"{safe_name}_{timestamp}"
+
+
+def run():
+    args = parse_cli_args()
+    script_directory = Path(__file__).parent
+
+    missing_by_experiment = None
+    missing_timestamp = None
+
+    if USE_MISSING_CONFIG:
+        missing_config_path = script_directory / MISSING_CONFIG_FILENAME
+
+        config_path, missing_timestamp, missing_by_experiment = load_missing_experiments_config(
+            missing_config_path=missing_config_path,
+            script_directory=script_directory,
+        )
+    else:
+        config_path = script_directory / FULL_CONFIG_FILENAME
+
+    experiment_configs = build_experiment_configs(config_path)
+
+    if REPORTING_TIMESTAMP_OVERRIDE is not None:
+        timestamp = str(REPORTING_TIMESTAMP_OVERRIDE)
+    elif missing_timestamp is not None:
+        timestamp = str(missing_timestamp)
+    else:
+        timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+
+    timestamp = build_reporting_timestamp(
+        timestamp=timestamp,
+        run_name=args.name,
+    )
+
+    reporting_path = script_directory / REPORTING_FOLDER_NAME
+    reporting_path.mkdir(parents=True, exist_ok=True)
+
+    jobs = build_selected_jobs(
+        experiment_configs=experiment_configs,
+        missing_by_experiment=missing_by_experiment,
+        timestamp=timestamp,
+        reporting_path=reporting_path,
+    )
+
+    print_job_selection_summary(
+        jobs=jobs,
+        config_path=config_path,
+        reporting_path=reporting_path,
+        timestamp=timestamp,
+        missing_by_experiment=missing_by_experiment,
+    )
+
+    if not jobs:
+        raise RuntimeError("No jobs selected.")
+
+    if DRY_RUN:
+        print_dry_run_jobs(jobs)
+        print()
+        print("DRY_RUN is currently True.")
+        print("After checking the selected jobs, set DRY_RUN = False and run again.")
+        return
 
     run_load_balanced(
         jobs=jobs,
 
         # Total number of simultaneous experiment processes.
-        max_parallel_processes=50,
+        max_parallel_processes=MAX_PARALLEL_PROCESSES,
 
         # New jobs only start if CPU/RAM are below these thresholds.
-        max_cpu_usage=75.0,
-        max_ram_usage=85.0,
+        max_cpu_usage=MAX_CPU_USAGE,
+        max_ram_usage=MAX_RAM_USAGE,
 
         # New GPU jobs only start if a GPU is below this utilization threshold.
-        max_gpu_usage=70.0,
+        max_gpu_usage=MAX_GPU_USAGE,
 
         # New GPU jobs only start if GPU memory usage is below this fraction.
-        max_gpu_memory_usage=0.85,
+        max_gpu_memory_usage=MAX_GPU_MEMORY_USAGE,
 
-        # With 3 GPUs and max_jobs_per_gpu=8, this allows up to 24 GPU jobs.
-        # For heavy ML training, reduce this to 1.
-        max_jobs_per_gpu=15,
+        # With 3 GPUs and max_jobs_per_gpu=15, this allows up to 45 GPU jobs.
+        # Reduce this for heavy models.
+        max_jobs_per_gpu=MAX_JOBS_PER_GPU,
 
         # Scheduler check interval.
-        poll_seconds=1.0,
+        poll_seconds=POLL_SECONDS,
     )
+
 
 if __name__ == "__main__":
     run()

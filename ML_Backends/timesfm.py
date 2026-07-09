@@ -31,17 +31,27 @@ def _attach_timesfm_zero_shot_models(sc_agent_list, cfg):
     """
     Load TimesFM once and attach it to agents of one selected supply-chain level.
 
-    No training.
-    No fine-tuning.
-    Only inference.
+    Supports:
+    - backend: torch
+    - backend: flax
     """
 
-    import torch
+    import os
     import timesfm
 
     timesfm_cfg = cfg.get("timesfm", {})
 
-    model_id = timesfm_cfg.get("model_id", "google/timesfm-2.5-200m-pytorch")
+    backend = str(timesfm_cfg.get("backend", "torch")).lower()
+
+    if backend not in {"torch", "flax"}:
+        raise ValueError(f"Unsupported TimesFM backend: {backend}. Use 'torch' or 'flax'.")
+
+    if backend == "flax":
+        default_model_id = "google/timesfm-2.5-200m-flax"
+    else:
+        default_model_id = "google/timesfm-2.5-200m-pytorch"
+
+    model_id = timesfm_cfg.get("model_id", default_model_id)
     target_level = timesfm_cfg.get("target_level", 1)
 
     prediction_length = timesfm_cfg.get("prediction_length", 1)
@@ -49,41 +59,82 @@ def _attach_timesfm_zero_shot_models(sc_agent_list, cfg):
     max_horizon = timesfm_cfg.get("max_horizon", 256)
 
     normalize_inputs = timesfm_cfg.get("normalize_inputs", True)
-    use_continuous_quantile_head = timesfm_cfg.get("use_continuous_quantile_head", True)
-    force_flip_invariance = timesfm_cfg.get("force_flip_invariance", True)
-    infer_is_positive = timesfm_cfg.get("infer_is_positive", True)
-    fix_quantile_crossing = timesfm_cfg.get("fix_quantile_crossing", True)
+    use_continuous_quantile_head = timesfm_cfg.get("use_continuous_quantile_head", False)
+    force_flip_invariance = timesfm_cfg.get("force_flip_invariance", False)
+    infer_is_positive = timesfm_cfg.get("infer_is_positive", False)
+    fix_quantile_crossing = timesfm_cfg.get("fix_quantile_crossing", False)
 
     logger.info(f"Loading TimesFM zero-shot model: {model_id}")
-
-    torch.set_float32_matmul_precision("high")
-
-    weights_path = hf_hub_download(
-        repo_id=model_id,
-        filename=timesfm.TimesFM_2p5_200M_torch.WEIGHTS_FILENAME,
+    logger.info(
+        "TimesFM settings: "
+        f"backend={backend}, "
+        f"prediction_length={prediction_length}, "
+        f"max_context={max_context}, "
+        f"max_horizon={max_horizon}, "
+        f"normalize_inputs={normalize_inputs}, "
+        f"use_continuous_quantile_head={use_continuous_quantile_head}, "
+        f"force_flip_invariance={force_flip_invariance}, "
+        f"infer_is_positive={infer_is_positive}, "
+        f"fix_quantile_crossing={fix_quantile_crossing}"
     )
 
-    model = timesfm.TimesFM_2p5_200M_torch(
-        torch_compile=False,
+    forecast_config = timesfm.ForecastConfig(
+        max_context=max_context,
+        max_horizon=max_horizon,
+        per_core_batch_size=1,
+        normalize_inputs=normalize_inputs,
+        use_continuous_quantile_head=use_continuous_quantile_head,
+        force_flip_invariance=force_flip_invariance,
+        infer_is_positive=infer_is_positive,
+        fix_quantile_crossing=fix_quantile_crossing,
     )
 
-    model.model.load_checkpoint(
-        weights_path,
-        torch_compile=model.torch_compile,
-    )
+    if backend == "flax":
+        # Must be set before JAX initializes. Also run with JAX_PLATFORMS=cpu in CLI.
+        os.environ.setdefault("JAX_PLATFORMS", str(timesfm_cfg.get("jax_platforms", "cpu")))
 
-    model.compile(
-        timesfm.ForecastConfig(
-            max_context=max_context,
-            max_horizon=max_horizon,
-            per_core_batch_size=1,
-            normalize_inputs=normalize_inputs,
-            use_continuous_quantile_head=use_continuous_quantile_head,
-            force_flip_invariance=force_flip_invariance,
-            infer_is_positive=infer_is_positive,
-            fix_quantile_crossing=fix_quantile_crossing,
+        logger.info("Using TimesFM Flax backend.")
+        logger.info("For Flax, loading via from_pretrained(); no model.safetensors download.")
+
+        model = timesfm.TimesFM_2p5_200M_flax.from_pretrained(
+            model_id
         )
-    )
+
+        model.compile(forecast_config)
+
+    else:
+        import torch
+        from huggingface_hub import hf_hub_download
+
+        requested_device = str(timesfm_cfg.get("device", "cuda")).lower()
+
+        if requested_device == "cuda" and torch.cuda.is_available():
+            device = torch.device("cuda")
+        else:
+            device = torch.device("cpu")
+
+        logger.info(f"Using TimesFM PyTorch backend on device={device}.")
+
+        torch.set_float32_matmul_precision("high")
+
+        weights_path = hf_hub_download(
+            repo_id=model_id,
+            filename=timesfm.TimesFM_2p5_200M_torch.WEIGHTS_FILENAME,
+        )
+
+        model = timesfm.TimesFM_2p5_200M_torch(
+            torch_compile=False,
+        )
+
+        model.model.load_checkpoint(
+            weights_path,
+            torch_compile=model.torch_compile,
+        )
+
+        if hasattr(model, "model") and hasattr(model.model, "to"):
+            model.model.to(device)
+
+        model.compile(forecast_config)
 
     logger.info(f"TimesFM loaded. Attaching to level {target_level} agents.")
 

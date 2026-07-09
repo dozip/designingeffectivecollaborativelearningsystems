@@ -34,22 +34,51 @@ class OrderUpTo(Replenishment):
         self.inv_cap = inv_cap
 
     def compute_order_sum(self, d_est: int, currnet_inv: int) -> int:
-        """compute the complete order size based on current inventory, demand forecast and strategy parameters
+        """
+        Compute the order size based on current inventory, demand forecast,
+        and replenishment parameters.
 
-        Args:
-            d_est (int): _description_
-            currnet_inv (int): _description_
-
-        Returns:
-            int: _description_
+        This version fails fast if the forecast or current inventory is NaN/inf.
+        Without this guard, a NaN forecast can silently become a NaN order,
+        which later causes misleading BWR/OVR results.
         """
 
-        inv_adjustment = np.round(((self.lead_time + self.risk_factor) * d_est) - currnet_inv)
+        d_est = float(d_est)
+        currnet_inv = float(currnet_inv)
+
+        if not np.isfinite(d_est):
+            raise ValueError(
+                f"Invalid demand estimate in OrderUpTo.compute_order_sum: "
+                f"d_est={d_est}, current_inv={currnet_inv}, "
+                f"R={self.R}, lead_time={self.lead_time}, "
+                f"risk_factor={self.risk_factor}, inv_cap={self.inv_cap}"
+            )
+
+        if not np.isfinite(currnet_inv):
+            raise ValueError(
+                f"Invalid current inventory in OrderUpTo.compute_order_sum: "
+                f"d_est={d_est}, current_inv={currnet_inv}, "
+                f"R={self.R}, lead_time={self.lead_time}, "
+                f"risk_factor={self.risk_factor}, inv_cap={self.inv_cap}"
+            )
+
+        inv_adjustment = np.round(
+            ((self.lead_time + self.risk_factor) * d_est) - currnet_inv
+        )
+
         order_size = np.round(self.R * d_est + inv_adjustment)
+
+        if not np.isfinite(order_size):
+            raise ValueError(
+                f"Computed non-finite order_size in OrderUpTo.compute_order_sum: "
+                f"order_size={order_size}, d_est={d_est}, current_inv={currnet_inv}"
+            )
 
         if order_size < 0:
             order_size = 0
+
         max_order_size = self.inv_cap - currnet_inv
+
         if order_size > max_order_size:
             order_size = max_order_size
 
@@ -458,64 +487,110 @@ class ChronosZeroShotForecaster(Forecasting):
         return forecasts
 
 class TimesFMZeroShotForecaster(Forecasting):
+    """
+    Adapter between the Agent interface and TimesFM.
+
+    This version is intentionally strict:
+    - it validates input histories before forecasting,
+    - it uses the copied inputs when calling TimesFM,
+    - it checks that TimesFM returns the expected shape,
+    - it raises an explicit error if TimesFM returns NaN / inf.
+
+    This prevents invalid TimesFM forecasts from silently propagating into
+    orders, inventory, and metrics.
+    """
+
     def __init__(self, model, prediction_length=1):
+        super().__init__()
         self.model = model
+        self.model_type = "TimesFM_zero_shot"
         self.prediction_length = prediction_length
 
     def predict(self, data):
         """
-        data is a list of 1D arrays:
-            [
-                history_for_retailer_0,
-                history_for_retailer_1,
+        Input format expected from Agent:
+            data = [
+                history_for_channel_0,
+                history_for_channel_1,
                 ...
             ]
 
-        For your config, level-1 agents should pass 2 series,
-        each with sequence_length=4 values.
+        Return format expected by Agent:
+            [
+                forecast_channel_0,
+                forecast_channel_1,
+                ...
+            ]
         """
 
         inputs = []
 
-        for channel in data:
+        for channel_id, channel in enumerate(data):
             arr = np.asarray(channel, dtype=np.float32).reshape(-1)
 
             if arr.size == 0:
                 arr = np.array([0.0], dtype=np.float32)
 
+            if not np.all(np.isfinite(arr)):
+                raise ValueError(
+                    f"TimesFM received non-finite input history for channel {channel_id}. "
+                    f"history={arr}"
+                )
+
             inputs.append(arr)
 
-        # Store this BEFORE calling TimesFM.
         expected_num_series = len(inputs)
 
-        # Pass a copy so TimesFM cannot mutate the list we use for checking.
+        if expected_num_series == 0:
+            return []
+
+        # Use copied inputs so TimesFM cannot mutate the arrays used for diagnostics.
         forecast_inputs = [arr.copy() for arr in inputs]
 
-        #print("before forecast:", len(inputs))
-
         point_forecast, quantile_forecast = self.model.forecast(
-            inputs=inputs,
+            inputs=forecast_inputs,
             horizon=self.prediction_length,
         )
-        
-        #print("after forecast:", len(inputs))
-        #print("point_forecast.shape:", np.asarray(point_forecast).shape)
 
-        point_forecast = np.asarray(point_forecast)
+        point_forecast = np.asarray(point_forecast, dtype=float)
 
         if point_forecast.ndim == 1:
             point_forecast = point_forecast.reshape(1, -1)
+
+        if point_forecast.ndim != 2:
+            raise ValueError(
+                f"TimesFM returned an unexpected forecast array with ndim={point_forecast.ndim}. "
+                f"point_forecast.shape={point_forecast.shape}"
+            )
 
         if point_forecast.shape[0] != expected_num_series:
             raise ValueError(
                 f"TimesFM returned {point_forecast.shape[0]} forecast series, "
                 f"but Agent passed {expected_num_series} input series. "
-                f"Original data lengths={[len(np.asarray(x).reshape(-1)) for x in data]}. "
+                f"Input lengths={[len(x) for x in forecast_inputs]}. "
+                f"point_forecast.shape={point_forecast.shape}"
+            )
+
+        if point_forecast.shape[1] < 1:
+            raise ValueError(
+                f"TimesFM returned no forecast horizon values. "
                 f"point_forecast.shape={point_forecast.shape}"
             )
 
         forecasts = []
+
         for channel_id in range(expected_num_series):
-            forecasts.append(float(point_forecast[channel_id, 0]))
+            forecast = float(point_forecast[channel_id, 0])
+
+            if not np.isfinite(forecast):
+                raise ValueError(
+                    f"TimesFM returned non-finite forecast for channel {channel_id}: "
+                    f"{forecast}. "
+                    f"Input history={forecast_inputs[channel_id]}. "
+                    f"All point forecasts for this channel={point_forecast[channel_id]}"
+                )
+
+            # Keep this consistent with Chronos and MA.
+            forecasts.append(float(np.round(forecast, 0)))
 
         return forecasts
