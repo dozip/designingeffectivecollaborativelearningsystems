@@ -2197,6 +2197,7 @@ MISSING_CONFIG_FILENAME = "missing_experiments.yaml"
 FULL_CONFIG_FILENAME = "real_world_usda_4datasets_lt123.yaml"
 FULL_CONFIG_FILENAME = "real_world_4datasets_cleaned_659_config.yaml"
 FULL_CONFIG_FILENAME = "real_world_usda_config_dynamic_supplier_allocation.yaml"
+FULL_CONFIG_FILENAME = "combined_experiment_config_REALWORLD_5RUNS.yaml"
 # FULL_CONFIG_FILENAME = "all_experiments_corrected.yaml"
 
 # None means:
@@ -2221,7 +2222,7 @@ MAX_CPU_USAGE = 85.0
 MAX_RAM_USAGE = 85.0
 MAX_GPU_USAGE = 70.0
 MAX_GPU_MEMORY_USAGE = 0.85
-MAX_JOBS_PER_GPU = 2
+MAX_JOBS_PER_GPU = 4
 POLL_SECONDS = 1.0
 
 
