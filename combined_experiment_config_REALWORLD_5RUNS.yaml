@@ -1,0 +1,487 @@
+# =============================================================================
+# Combined experiment configuration
+# =============================================================================
+#
+# Base configuration:
+#   sim / early_stopping / market / supply_chain define the defaults.
+# Experiment execution:
+#   each item under experiments is executed with its overrides applied on top
+#   of the base configuration.
+# Product configuration:
+#   product-specific settings are defined here in YAML, never hard-coded.
+#
+# Real-world evaluation setup:
+#   - Three products are loaded from separate historical demand files.
+#   - All nine available forecasting/training methods are evaluated.
+#   - Each method is tested with lead times 1, 2, and 3.
+#   - Every method/lead-time combination is repeated for five runs.
+#
+# Total experiment templates: 27
+#   9 training methods * 3 lead times = 27
+# Each template is repeated 5 times, resulting in 135 simulation runs.
+#
+# Important compatibility note:
+#   The existing misspelled config key seasonality_frequncy is kept intentionally,
+#   because the current code/config loader appears to expect that key.
+#
+# =============================================================================
+
+sim:
+  simulation_runs: 1
+  run_start_id: 0
+  convergence_time: 52      # warm-up phase
+  simulation_time: 587       # steps after warm-up, before training
+  training_time: 160         # steps used to train the models
+  testing_time: 20           # steps after training, for testing
+  training_type: null         # null | local_multichannel | split_multichannel |
+                              # Chronos_zero_shot | TimesFM_zero_shot |
+                              # local_timemixer | split_timemixer |
+                              # local_patchtst | split_patchtst
+  train_size: 526
+  val_size: 20
+  epochs: 2000
+  learning_rate: 0.001
+  momentum: 0.9
+  batch_size: 128
+  sequence_length: 13
+early_stopping:
+  patience: 300
+  min_delta: 0.0
+timesfm:
+  backend: flax
+  model_id: google/timesfm-2.5-200m-flax
+  target_level: 1
+  prediction_length: 1
+  max_context: 1024
+  max_horizon: 256
+  normalize_inputs: true
+  use_continuous_quantile_head: false
+  force_flip_invariance: false
+  infer_is_positive: false
+  fix_quantile_crossing: false
+  jax_platforms: cpu
+market:
+  # Number and order of products used by the market data configuration.
+  num_products: 3
+
+  # One real-world input source per product. The list order defines the
+  # product index: cheddar=0, dry whey=1, nonfat dry milk=2.
+  # The misspelled key data_scource is retained for loader compatibility.
+  data_scource:
+    - data_scource: data/cheddar_40lb_blocks.csv
+      demand_column: cheese_40_sales
+    - data_scource: data/dry_whey.csv
+      demand_column: whey_sales
+    - data_scource: data/nonfat_dry_milk.csv
+      demand_column: nonfat_milk_sales
+
+  # Fallback column name for any source without a per-product override.
+  demand_column: demand
+
+  # Input scaling: transformed demand = raw demand / divisor * multiplier.
+  # A divisor of 1 keeps the raw values; the historical default is 1000.
+  # demand_scale_divisor: 1
+  # demand_scale_multiplier: 1
+
+  # Synthetic-market parameters remain available but are only relevant when
+  # data_scource is empty/null.
+  primary_demand: 1000
+  trend_magnitude: 2
+  seasonality_magnitude: 50
+  seasonality_frequncy: 52
+  random_walk:
+    mean: 0
+    variance: 1
+
+  # Retailer-product shares, ordered as s = retailer * P + product.
+  # With R=2 and P=3, the first three values belong to retailer 0 and the
+  # final three to retailer 1. For each product, retailer shares sum to 1.
+  demand_split: [0.7, 0.7, 0.7, 0.3, 0.3, 0.3]
+
+  # Optional multi-product dependency model:
+  # factor_model:
+  #   lam: 0.7                 # 0..1 shared-factor loading; collaboration lever
+  #   tau: 1                   # lead-lag delay, >= shortest forecast lead
+  #   idio_noise_scale: 1.0
+  #   shock_prob: 0.0
+  #   shock_mag: 0.0
+  #   seed: 0
+supply_chain:
+  agents_per_level:             # [num_retailers, num_manufacturers]
+  - 2
+  - 3
+
+  # --- Product configuration ---
+  num_products: 3              # kept consistent with market.num_products
+  product_to_manufacturer:     # product p -> assigned manufacturer
+    0: 0
+    1: 1
+    2: 2
+
+  sc_levels:
+    sc_level_0:                 # retailers
+      adjaceny_list:
+      - - 1
+        - 1
+        - 1
+      - - 1
+        - 1
+        - 1
+      lead_time: 1            # scalar, length-P list, or retailer x product matrix
+      replenishment_strat:
+      - OUT
+      - OUT
+      forecasting_strat:
+      - MA
+      - MA
+      inv_capacity:           # per retailer; scalar broadcasts to all products,
+      - 50000                    # or use per-product lists
+      - 50000
+      init_inv:                 # scalar/per-retailer values or per-product lists
+      - 0
+      - 0
+      safety_risk_factor:
+      - 1
+      - 1
+      R:
+      - 1
+      - 1
+    sc_level_1:                 # manufacturers
+      adjaceny_list:
+      - - 1
+      - - 1
+      - - 1
+      lead_time: 1            # scalar, length-P list, or manufacturer x product matrix
+      replenishment_strat:
+      - OUT
+      - OUT
+      - OUT
+      forecasting_strat:
+      - MA
+      - MA
+      - MA
+      inv_capacity:
+      - 10000
+      - 100000
+      - 10000
+      init_inv:
+      - 0
+      - 0
+      - 0
+      safety_risk_factor:
+      - 1
+      - 1
+      - 1
+      R:
+      - 1
+      - 1
+      - 1
+# =============================================================================
+# EXPERIMENT DEFINITIONS
+# Each item is executed once as a configuration template; simulation_runs controls
+# the repeated runs for that item. Its overrides are recursively applied on top of
+# the base configuration above.
+# =============================================================================
+
+# =============================================================================
+# EXPERIMENT DEFINITIONS — real-world data
+# Each method is evaluated at lead times 1, 2, and 3. The base setting
+# simulation_runs=5 applies to every item, so no run override is required.
+# =============================================================================
+experiments:
+  - name: no_training_ma_lt1
+    overrides:
+      sim:
+        training_type: null
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: no_training_ma_lt2
+    overrides:
+      sim:
+        training_type: null
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: no_training_ma_lt3
+    overrides:
+      sim:
+        training_type: null
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: local_multichannel_lt1
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: local_multichannel_lt2
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: local_multichannel_lt3
+    overrides:
+      sim:
+        training_type: "local_multichannel"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: split_multichannel_lt1
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: split_multichannel_lt2
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: split_multichannel_lt3
+    overrides:
+      sim:
+        training_type: "split_multichannel"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: chronos_zero_shot_lt1
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: chronos_zero_shot_lt2
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: chronos_zero_shot_lt3
+    overrides:
+      sim:
+        training_type: "Chronos_zero_shot"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timesfm_zero_shot_lt1
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timesfm_zero_shot_lt2
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timesfm_zero_shot_lt3
+    overrides:
+      sim:
+        training_type: "TimesFM_zero_shot"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timemixer_local_lt1
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_local_lt2
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_local_lt3
+    overrides:
+      sim:
+        training_type: "local_timemixer"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: timemixer_split_lt1
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: timemixer_split_lt2
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: timemixer_split_lt3
+    overrides:
+      sim:
+        training_type: "split_timemixer"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: patchtst_local_lt1
+    overrides:
+      sim:
+        training_type: "local_patchtst"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: patchtst_local_lt2
+    overrides:
+      sim:
+        training_type: "local_patchtst"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: patchtst_local_lt3
+    overrides:
+      sim:
+        training_type: "local_patchtst"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
+
+  - name: patchtst_split_lt1
+    overrides:
+      sim:
+        training_type: "split_patchtst"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 1
+          sc_level_1:
+            lead_time: 1
+
+  - name: patchtst_split_lt2
+    overrides:
+      sim:
+        training_type: "split_patchtst"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 2
+          sc_level_1:
+            lead_time: 2
+
+  - name: patchtst_split_lt3
+    overrides:
+      sim:
+        training_type: "split_patchtst"
+      supply_chain:
+        sc_levels:
+          sc_level_0:
+            lead_time: 3
+          sc_level_1:
+            lead_time: 3
