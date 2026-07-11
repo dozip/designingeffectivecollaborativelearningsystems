@@ -15,6 +15,15 @@ sha256 of every reported agent history against a frozen golden captured from the
 original code (tests/golden_p1_field_hashes.json). A mismatch points at the exact
 (level, agent, field) that diverged.
 
+KNOWN BASELINE PROPERTY — do not "fix": in this single-product baseline config,
+manufacturers 0 and 2 (inv_capacity 10,000) are capacity-bound ~100% of the time
+(their OUT orders clamp at max_order_size), which suppresses their bullwhip
+relative to manufacturer 1 (inv_capacity 100,000). This clamp is part of the
+original behaviour the golden documents; it is intentionally preserved here.
+It is NOT a target property of the model — the sweep/REALWORLD configs use
+non-binding manufacturer capacities and a saturation guard. Keep this config and
+its golden untouched precisely so this historical behaviour stays documented.
+
 Run directly:
     python tests/test_single_product_regression.py
 Regenerate the golden after an intentional, reviewed change:

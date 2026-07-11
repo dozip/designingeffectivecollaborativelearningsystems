@@ -1,0 +1,399 @@
+# Synthetic multi-product sweep config (MarketFactorModel, lam=0.75, tau=2).
+# Generated from combined_experiment_config_REALWORLD_5RUNS.yaml (same sweep),
+# with synthetic market and non-binding manufacturer inv_capacity (5,000,000).
+
+sim:
+  simulation_runs: 1
+  run_start_id: 0
+  convergence_time: 52
+  simulation_time: 587
+  training_time: 160
+  testing_time: 20
+  training_type: null
+  train_size: 526
+  val_size: 20
+  epochs: 2000
+  learning_rate: 0.001
+  momentum: 0.9
+  batch_size: 128
+  sequence_length: 13
+early_stopping:
+  patience: 300
+  min_delta: 0.0
+timesfm:
+  backend: flax
+  model_id: google/timesfm-2.5-200m-flax
+  target_level: 1
+  prediction_length: 1
+  max_context: 1024
+  max_horizon: 256
+  normalize_inputs: true
+  use_continuous_quantile_head: false
+  force_flip_invariance: false
+  infer_is_positive: false
+  fix_quantile_crossing: false
+  jax_platforms: cpu
+market:
+  num_products: 3
+  primary_demand: 1000
+  trend_magnitude: 2
+  seasonality_magnitude: 50
+  seasonality_frequncy: 52
+  random_walk:
+    mean: 0
+    variance: 1
+  demand_split:
+  - 0.2333
+  - 0.2333
+  - 0.2334
+  - 0.1
+  - 0.1
+  - 0.1
+  factor_model:
+    lam: 0.75
+    tau: 2
+    idio_noise_scale: 1.0
+    shock_prob: 0.0
+    shock_mag: 0.0
+    seed: 0
+supply_chain:
+  agents_per_level:
+  - 2
+  - 3
+  num_products: 3
+  product_to_manufacturer:
+    0: 0
+    1: 1
+    2: 2
+  sc_levels:
+    sc_level_0:
+      adjaceny_list:
+      - - 1
+        - 1
+        - 1
+      - - 1
+        - 1
+        - 1
+      lead_time: 1
+      replenishment_strat:
+      - OUT
+      - OUT
+      forecasting_strat:
+      - MA
+      - MA
+      inv_capacity:
+      - 50000
+      - 50000
+      init_inv:
+      - 0
+      - 0
+      safety_risk_factor:
+      - 1
+      - 1
+      R:
+      - 1
+      - 1
+    sc_level_1:
+      adjaceny_list:
+      - - 1
+      - - 1
+      - - 1
+      lead_time: 1
+      replenishment_strat:
+      - OUT
+      - OUT
+      - OUT
+      forecasting_strat:
+      - MA
+      - MA
+      - MA
+      inv_capacity:
+      - 5000000
+      - 5000000
+      - 5000000
+      init_inv:
+      - 0
+      - 0
+      - 0
+      safety_risk_factor:
+      - 1
+      - 1
+      - 1
+      R:
+      - 1
+      - 1
+      - 1
+experiments:
+- name: no_training_ma_lt1
+  overrides:
+    sim:
+      training_type: null
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 1
+        sc_level_1:
+          lead_time: 1
+- name: no_training_ma_lt2
+  overrides:
+    sim:
+      training_type: null
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 2
+        sc_level_1:
+          lead_time: 2
+- name: no_training_ma_lt3
+  overrides:
+    sim:
+      training_type: null
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 3
+        sc_level_1:
+          lead_time: 3
+- name: local_multichannel_lt1
+  overrides:
+    sim:
+      training_type: local_multichannel
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 1
+        sc_level_1:
+          lead_time: 1
+- name: local_multichannel_lt2
+  overrides:
+    sim:
+      training_type: local_multichannel
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 2
+        sc_level_1:
+          lead_time: 2
+- name: local_multichannel_lt3
+  overrides:
+    sim:
+      training_type: local_multichannel
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 3
+        sc_level_1:
+          lead_time: 3
+- name: split_multichannel_lt1
+  overrides:
+    sim:
+      training_type: split_multichannel
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 1
+        sc_level_1:
+          lead_time: 1
+- name: split_multichannel_lt2
+  overrides:
+    sim:
+      training_type: split_multichannel
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 2
+        sc_level_1:
+          lead_time: 2
+- name: split_multichannel_lt3
+  overrides:
+    sim:
+      training_type: split_multichannel
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 3
+        sc_level_1:
+          lead_time: 3
+- name: chronos_zero_shot_lt1
+  overrides:
+    sim:
+      training_type: Chronos_zero_shot
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 1
+        sc_level_1:
+          lead_time: 1
+- name: chronos_zero_shot_lt2
+  overrides:
+    sim:
+      training_type: Chronos_zero_shot
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 2
+        sc_level_1:
+          lead_time: 2
+- name: chronos_zero_shot_lt3
+  overrides:
+    sim:
+      training_type: Chronos_zero_shot
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 3
+        sc_level_1:
+          lead_time: 3
+- name: timesfm_zero_shot_lt1
+  overrides:
+    sim:
+      training_type: TimesFM_zero_shot
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 1
+        sc_level_1:
+          lead_time: 1
+- name: timesfm_zero_shot_lt2
+  overrides:
+    sim:
+      training_type: TimesFM_zero_shot
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 2
+        sc_level_1:
+          lead_time: 2
+- name: timesfm_zero_shot_lt3
+  overrides:
+    sim:
+      training_type: TimesFM_zero_shot
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 3
+        sc_level_1:
+          lead_time: 3
+- name: timemixer_local_lt1
+  overrides:
+    sim:
+      training_type: local_timemixer
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 1
+        sc_level_1:
+          lead_time: 1
+- name: timemixer_local_lt2
+  overrides:
+    sim:
+      training_type: local_timemixer
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 2
+        sc_level_1:
+          lead_time: 2
+- name: timemixer_local_lt3
+  overrides:
+    sim:
+      training_type: local_timemixer
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 3
+        sc_level_1:
+          lead_time: 3
+- name: timemixer_split_lt1
+  overrides:
+    sim:
+      training_type: split_timemixer
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 1
+        sc_level_1:
+          lead_time: 1
+- name: timemixer_split_lt2
+  overrides:
+    sim:
+      training_type: split_timemixer
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 2
+        sc_level_1:
+          lead_time: 2
+- name: timemixer_split_lt3
+  overrides:
+    sim:
+      training_type: split_timemixer
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 3
+        sc_level_1:
+          lead_time: 3
+- name: patchtst_local_lt1
+  overrides:
+    sim:
+      training_type: local_patchtst
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 1
+        sc_level_1:
+          lead_time: 1
+- name: patchtst_local_lt2
+  overrides:
+    sim:
+      training_type: local_patchtst
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 2
+        sc_level_1:
+          lead_time: 2
+- name: patchtst_local_lt3
+  overrides:
+    sim:
+      training_type: local_patchtst
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 3
+        sc_level_1:
+          lead_time: 3
+- name: patchtst_split_lt1
+  overrides:
+    sim:
+      training_type: split_patchtst
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 1
+        sc_level_1:
+          lead_time: 1
+- name: patchtst_split_lt2
+  overrides:
+    sim:
+      training_type: split_patchtst
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 2
+        sc_level_1:
+          lead_time: 2
+- name: patchtst_split_lt3
+  overrides:
+    sim:
+      training_type: split_patchtst
+    supply_chain:
+      sc_levels:
+        sc_level_0:
+          lead_time: 3
+        sc_level_1:
+          lead_time: 3
+meta:
+  note: 'Synthetic multi-product sweep config (factor model). Derived from the REALWORLD
+    config: same experiment sweep, synthetic market, non-binding manufacturer capacities.'

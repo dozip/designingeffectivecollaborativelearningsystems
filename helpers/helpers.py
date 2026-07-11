@@ -210,22 +210,14 @@ def load_market_demand_from_file(market_cfg: dict) -> np.ndarray:
         market.demand_column:      optional; if missing, inferred
         market.date_column:        optional; used only for sorting
         market.sheet_name:         optional for Excel; default 0
+        market.demand_scale_divisor: REQUIRED. Loaded demand is divided by this
+            value (then rounded). There is no default: demand magnitude must be
+            an explicit, documented choice so it stays commensurate with the
+            OUT inventory capacities (see the saturation guard). Use 1 for raw
+            values.
 
-    Demand values are used as-is (only rounded to whole numbers). If you need a
-    different magnitude, pre-scale the data file. The former
-    demand_scale_divisor / demand_scale_multiplier options were removed.
+    demand_scale_multiplier was removed and is rejected if present.
     """
-    # Demand scaling was removed: values are used as-is (rounded to integers).
-    # Fail loudly if a config still sets the old keys, so nobody silently gets
-    # unscaled data where they expected scaling.
-    for removed_key in ("demand_scale_divisor", "demand_scale_multiplier"):
-        if removed_key in market_cfg:
-            raise ValueError(
-                f"market.{removed_key} has been removed. Demand values are now used "
-                "as-is (only rounded to whole numbers); pre-scale the data file if you "
-                "need a different magnitude."
-            )
-
     data_source = _get_market_data_source(market_cfg)
 
     if _is_missing_data_source(data_source):
@@ -265,7 +257,27 @@ def load_market_demand_from_file(market_cfg: dict) -> np.ndarray:
             f"Set market.demand_column explicitly. Available columns: {list(df.columns)}"
         )
 
-    return np.round(demand, 0)
+    # demand_scale_multiplier was removed; reject it so nobody expects it to act.
+    if "demand_scale_multiplier" in market_cfg:
+        raise ValueError(
+            "market.demand_scale_multiplier has been removed. Use demand_scale_divisor "
+            "(divide only) or pre-scale the data file."
+        )
+
+    # demand_scale_divisor is mandatory (no default): the demand magnitude must be
+    # an explicit choice so it stays commensurate with the OUT inventory capacity.
+    if "demand_scale_divisor" not in market_cfg:
+        raise ValueError(
+            f"market.demand_scale_divisor is required when a data source is set "
+            f"(missing for file {data_path}). Set it explicitly (use 1 for raw "
+            f"values). There is no default, so demand magnitude is never scaled "
+            f"silently."
+        )
+    divisor = float(market_cfg["demand_scale_divisor"])
+    if divisor == 0:
+        raise ValueError("market.demand_scale_divisor must not be 0.")
+
+    return np.round(demand / divisor, 0)
 
 
 # =============================================================================
@@ -532,6 +544,7 @@ def _build_simulation_objects_from_cfg(cfg: dict):
         sc_all.get("num_products", cfg.get("market", {}).get("num_products", 1))
     )
     product_to_manufacturer = sc_all.get("product_to_manufacturer", None)
+    saturation_guard_fraction = float(sc_all.get("saturation_guard_fraction", 0.5))
 
     simulation = Simulation(
         T=T,
@@ -598,8 +611,84 @@ def _build_simulation_objects_from_cfg(cfg: dict):
     supply_chain.num_products = num_products
     supply_chain.product_to_suppliers = _derive_product_to_suppliers(sc_agent_list)
     _assert_routing_valid(sc_agent_list, supply_chain.product_to_suppliers)
+    _assert_no_saturation(
+        sc_agent_list, market, supply_chain.product_to_suppliers,
+        num_products, saturation_guard_fraction,
+    )
 
     return simulation, market, supply_chain, sc_agent_list
+
+
+def _assert_no_saturation(sc_agent_list, market, product_to_suppliers,
+                          num_products, fraction) -> None:
+    """Fail loudly if any agent's inventory capacity is too small for its demand.
+
+    For each agent's product inventory, estimate the median demand that inventory
+    must serve and compare it to ``fraction`` * inv_capacity. If demand exceeds
+    that, the OUT policy will clamp orders at the capacity every (or many)
+    periods, so the order stream carries no demand information — which silently
+    turns any forecast target into a (near-)constant. Catches both total
+    saturation (retailer demand >> capacity) and partial saturation (a single
+    high-volume product), because it is evaluated per agent and per product.
+
+    Demand is taken from the market's own streams (order s = retailer*P +
+    product). A manufacturer's inventory serves the orders routed to it, so its
+    load is the sum over retailers of that product's stream weighted by the
+    routing share — which, in the healthy (non-saturated) regime, equals the
+    demand it will receive.
+    """
+    retailers = sc_agent_list[0]
+    R = len(retailers)
+    P = int(num_products)
+
+    # Sample per-stream demand medians via the public interface, then restore the
+    # market's history so the actual run starts clean (split_demand_on_time only
+    # side effect is appending to split_demand_history).
+    horizon = int(len(np.asarray(market.demand)))
+    saved_history = list(market.split_demand_history)
+    streams = np.array([market.split_demand_on_time(t) for t in range(horizon)])
+    market.split_demand_history = saved_history
+    per_stream_median = np.median(streams, axis=0).reshape(-1)  # (R*P,)
+
+    def stream_med(r, p):
+        return float(per_stream_median[r * P + p])
+
+    # manufacturer index -> the single product it produces
+    manufacturer_product = {}
+    for p, suppliers in enumerate(product_to_suppliers or []):
+        for m in suppliers:
+            manufacturer_product[int(m)] = p
+
+    for level_idx, level in enumerate(sc_agent_list):
+        for agent in level:
+            for p_inv in range(agent.num_products):
+                if level_idx == 0:
+                    # retailer: product p_inv is served by its own demand stream
+                    load = stream_med(agent.id, p_inv)
+                    product = p_inv
+                else:
+                    # upstream: inventory serves the orders routed to it
+                    product = manufacturer_product.get(agent.id, 0)
+                    load = 0.0
+                    for r_agent in retailers:
+                        suppliers, shares = r_agent.product_routing[product]
+                        share = 0.0
+                        for i, s in enumerate(suppliers):
+                            if int(s) == agent.id:
+                                share = float(shares[i])
+                        load += stream_med(r_agent.id, product) * share
+
+                cap = float(agent.inv_capacity[p_inv])
+                if load > fraction * cap:
+                    raise ValueError(
+                        f"Saturation guard: level {level_idx} agent {agent.id} "
+                        f"(product {product}) has median incoming demand {load:,.1f} "
+                        f"but inv_capacity {cap:,.1f} (threshold {fraction:.2f} x cap "
+                        f"= {fraction * cap:,.1f}). Orders would saturate at the "
+                        f"capacity and carry no demand information. Raise inv_capacity, "
+                        f"scale demand down (market.demand_scale_divisor), or set "
+                        f"supply_chain.saturation_guard_fraction if this is intended."
+                    )
 
 
 def _assert_routing_valid(sc_agent_list, product_to_suppliers) -> None:
