@@ -14,7 +14,8 @@ class Agent():
     def __init__(
             self, id: int, sc_level: int, adjacency_matrix: np.array, lead_time_matrix: np.array,
             training_time: int, cfg: json, cfg_all: json,
-            sequence_length: int, eopchs: int, batch_size: int, learning_rate: float, momentum: float) -> None:
+            sequence_length: int, eopchs: int, batch_size: int, learning_rate: float, momentum: float,
+            num_products: int = 1, product_to_manufacturer=None) -> None:
 
         """Initialize the agent with all parameters
 
@@ -26,15 +27,17 @@ class Agent():
                                         this and the nexxt level or one lead time for all connections
             demand_hist_size (int): how many time steps should be considered for convergence phase and during training
             cfg (json): config file containing all additional configuration information of an agent
+            num_products (int): number of distinct products in the market. Retailers hold
+                separate inventory / forecast / order per product; upstream agents each
+                produce exactly one product (num_products collapses to 1 for them).
+            product_to_manufacturer: optional routing map product_index -> supplier(s).
+                Only used by retailers (sc_level 0). None => equal split across all
+                connected suppliers per product, which reproduces the legacy gamma split.
         """
         self.id = id  # id of agent within supply chain level
         self.sc_level = sc_level  # supply chain level the agent is on
 
         self.adjacency_matrix = adjacency_matrix  # adjaceny_matrix of this level with the next one
-
-        # Keep lead time as a plain int. This avoids queue maxsize/range issues
-        # if a numpy scalar is passed in.
-        self.lead_time_matrix = int(np.asarray(lead_time_matrix).item())
 
         self.supplier_num = len(self.adjacency_matrix[self.id])  # get number of possible suppliers
         self.supplier_index = np.where(self.adjacency_matrix[self.id] == 1)[0]  # get ids of actula suppliers
@@ -48,12 +51,46 @@ class Agent():
 
         self.cfg = cfg  # config file for the rest of the level
         self.cfg_all = cfg_all  # config of everything
+
+        # -----------------------------------------------------------------
+        # Product / channel axes.
+        #
+        # Two distinct axes exist on an agent:
+        #   num_products : the inventory / order / replenishment axis. Retailers
+        #                  carry one per product; single-product upstream agents
+        #                  collapse this to 1.
+        #   num_retailer : the forecasting-channel axis (one incoming demand
+        #                  stream per channel). For a retailer the channels ARE
+        #                  the products, so num_retailer == num_products. For a
+        #                  manufacturer the channels are the retailers feeding it.
+        #
+        # channel_to_product maps each forecasting channel to the product whose
+        # inventory it feeds. Retailer: identity (channel p -> product p).
+        # Manufacturer: every channel feeds the single product 0.
+        # -----------------------------------------------------------------
         if self.sc_level == 0:
-            self.num_retailer = 1
+            self.num_products = int(num_products)
+            self.num_retailer = self.num_products
+            self.channel_to_product = np.arange(self.num_products, dtype=int)
         else:
+            self.num_products = 1
             level_key = "sc_level_" + str(self.sc_level - 1)
             adjacency_matrix_pre_level = self.cfg_all['sc_levels'][level_key]['adjaceny_list']
             self.num_retailer = len(np.where(np.array(adjacency_matrix_pre_level)[:, self.id] == 1)[0])
+            self.channel_to_product = np.zeros(self.num_retailer, dtype=int)
+
+        # Precompute, per product, the list of channels feeding it.
+        self._channels_of_product = [
+            np.where(self.channel_to_product == p)[0]
+            for p in range(self.num_products)
+        ]
+
+        # Per-product lead times. Each product may ship from a different
+        # supplier (manufacturer) with its own lead time. Falls back to a single
+        # broadcast lead time, which reproduces the single-product behaviour.
+        self.lead_time_per_product = self._build_lead_times(lead_time_matrix)
+        # Representative scalar lead time kept for backward compatibility.
+        self.lead_time_matrix = int(self.lead_time_per_product[0])
 
         ### init replenishment
         self.replenish_strat = cfg['replenishment_strat'][self.id]  # inventory management
@@ -66,12 +103,21 @@ class Agent():
         self.__init_forecasting_strat()  # set forecasting for convergence to Moveing Average
 
         ### init for reporting
+        # Flat reporting lists. For multi-product agents these hold the
+        # aggregate (sum over products) per time step, so single-product runs
+        # are byte-identical. Per-product detail lives in the *_by_product
+        # lists below.
         self.inventory_history = []
         self.order_history = []
         self.order_per_supplier_history = []
         self.received_shipment_history = []
         self.departed_shipment_history = []  # ToDo: Track
         self.demand_sum_history = []
+        # demand_by_retailer_history / forecast_by_retailer_history are indexed
+        # by forecasting CHANNEL (num_retailer entries), not literally by
+        # retailer. For a manufacturer a channel is an incoming retailer stream;
+        # for a retailer a channel is a product. The legacy names are kept
+        # because the forecasting backends and reporting consume them by name.
         self.demand_by_retailer_history = []
         for i in range(self.num_retailer):
             self.demand_by_retailer_history.append([])
@@ -80,6 +126,13 @@ class Agent():
         self.forecast_by_retailer_history = []
         for i in range(self.num_retailer):
             self.forecast_by_retailer_history.append([])
+
+        # Per-product reporting (one list per product). For single-product
+        # agents these mirror the flat lists.
+        self.inventory_history_by_product = [[] for _ in range(self.num_products)]
+        self.order_history_by_product = [[] for _ in range(self.num_products)]
+        self.forecast_history_by_product = [[] for _ in range(self.num_products)]
+        self.received_shipment_history_by_product = [[] for _ in range(self.num_products)]
 
         self.back_log_list = []  # not satisfied demands # ToDo: Track
 
@@ -93,19 +146,30 @@ class Agent():
         self.current_demand_sum = 0.0
         self.own_shipments = np.zeros(self.num_retailer, dtype=float)
 
-        self.variance_ratio = []
+        self.variance_ratio = []  # aggregate bullwhip (kept for backward compatibility)
+        self.variance_ratio_by_product = [[] for _ in range(self.num_products)]
+
+        # Per-product order computed each replenishment step; consumed by
+        # _split_orders to route each product to its supplier(s).
+        self.order_by_product = np.zeros(self.num_products, dtype=float)
 
         ### init order mechanism: How the Order is split among the agents suppliers
         self.__init_splitting_meachanism()
+        self._init_product_routing(product_to_manufacturer)
 
         ### init flags for internal logic
         self.converging = True
 
         ## others
-        # Incoming shipments replenish this agent's own inventory, which is scalar.
-        # The outgoing own_shipments remain vector-valued.
-        self.shipment_queue = queue.Queue(maxsize=self.lead_time_matrix + 1)
-        self.__init_shipment_queue()
+        # Incoming shipments replenish inventory. One FIFO queue per product,
+        # each sized by that product's lead time.
+        self.shipment_queues = []
+        for p in range(self.num_products):
+            lead_p = int(self.lead_time_per_product[p])
+            q = queue.Queue(maxsize=lead_p + 1)
+            for _ in range(lead_p):
+                q.put(0.0)
+            self.shipment_queues.append(q)
 
     # ---------------------------------------------------------------------
     # Shape normalization helpers
@@ -167,33 +231,87 @@ class Agent():
 
         return float(np.sum(arr))
 
-    def __init_shipment_queue(self) -> None:
-        # Incoming shipments are scalar inventory arrivals. Use float zeros
-        # consistently instead of int zeros.
-        for i in range(self.lead_time_matrix):
-            self.shipment_queue.put(0.0)
+    def _build_lead_times(self, lead_time_matrix) -> np.ndarray:
+        """Return per-product lead times of shape (num_products,).
+
+        Supported config shapes (all collapse to the single-product scalar):
+          - scalar / size-1            -> broadcast to every product
+          - length num_products vector -> one lead time per product
+          - 2D (agent x product)       -> row for this agent
+        A length num_products vector is only interpreted as per-product when
+        num_products > 1, so a per-agent lead-time list at an upstream level is
+        not mistaken for per-product values.
+        """
+        arr = np.asarray(lead_time_matrix)
+
+        if arr.ndim >= 2:
+            row = np.asarray(arr[self.id]).reshape(-1)
+            if row.size == self.num_products:
+                lead = row
+            elif row.size == 1:
+                lead = np.full(self.num_products, row[0])
+            else:
+                raise ValueError(
+                    f"Agent {self.id} level {self.sc_level}: lead_time row has "
+                    f"size {row.size}, expected 1 or num_products={self.num_products}."
+                )
+        else:
+            flat = arr.reshape(-1)
+            if self.num_products > 1 and flat.size == self.num_products:
+                lead = flat
+            elif flat.size == 1:
+                lead = np.full(self.num_products, flat[0])
+            else:
+                # per-agent list (or any other 1D form): use a single value for
+                # this agent and broadcast it across products.
+                value = flat[self.id] if flat.size > self.id else flat[0]
+                lead = np.full(self.num_products, value)
+
+        return np.asarray(lead, dtype=int).reshape(-1)
+
+    def _cfg_per_product(self, key: str) -> np.ndarray:
+        """Read a per-agent config entry and expand it to (num_products,).
+
+        The entry cfg[key][self.id] may be a scalar (broadcast to every product)
+        or a length num_products list (one value per product). Single-product
+        configs therefore work unchanged.
+        """
+        raw = np.asarray(self.cfg[key][self.id], dtype=float).reshape(-1)
+        if raw.size == self.num_products:
+            return raw.copy()
+        if raw.size == 1:
+            return np.full(self.num_products, float(raw[0]))
+        raise ValueError(
+            f"Agent {self.id} level {self.sc_level}: cfg['{key}'][{self.id}] has "
+            f"size {raw.size}, expected 1 or num_products={self.num_products}."
+        )
 
     def __init_replenishment_strat(self) -> None:
         """Sets the replenishment strategy using the inventory capacity, the initial inventory and
         strategy dependend parameters.
         Currently only the Order-Up-To (OUT) Strategy is implemented
 
+        Inventory, capacity and the replenishment policy are held per product.
+
         Raises:
             NotImplementedError: _description_
         """
 
-        self.current_inv = float(self.cfg['init_inv'][self.id])
-        self.inv_capacity = float(self.cfg['inv_capacity'][self.id])
+        self.current_inv = self._cfg_per_product('init_inv')
+        self.inv_capacity = self._cfg_per_product('inv_capacity')
 
         if self.replenish_strat == "OUT":
-            self.R = self.cfg["R"][self.id]
-            self.risk_factor = self.cfg['safety_risk_factor'][self.id]
-            self.replenishment = OrderUpTo(
-                R=self.R,
-                lead_time=self.lead_time_matrix,
-                risk_factor=self.risk_factor,
-                inv_cap=self.inv_capacity
-            )
+            self.R = self._cfg_per_product("R")
+            self.risk_factor = self._cfg_per_product('safety_risk_factor')
+            self.replenishment = [
+                OrderUpTo(
+                    R=self.R[p],
+                    lead_time=int(self.lead_time_per_product[p]),
+                    risk_factor=self.risk_factor[p],
+                    inv_cap=self.inv_capacity[p],
+                )
+                for p in range(self.num_products)
+            ]
         else:
             raise NotImplementedError
 
@@ -229,6 +347,80 @@ class Agent():
         # each call to _split_orders(). This is useful for checking whether the
         # dynamic option actually changes the upstream demand correlations.
         self.supplier_allocation_history = []
+
+    def _init_product_routing(self, product_to_manufacturer) -> None:
+        """Build, per product, which supplier(s) that product's order flows to.
+
+        self.product_routing[p] == (suppliers, shares) where ``suppliers`` are
+        global supplier indices and ``shares`` sum to 1.
+
+        The default (product_to_manufacturer is None) routes every product
+        equally across all connected suppliers, which reproduces the legacy
+        gamma order-split exactly. An explicit map lets a product go 100% (or by
+        weighted share) to specific manufacturer(s), e.g. {0: 0, 1: 1, 2: 2}.
+        """
+        self.product_routing = []
+        for p in range(self.num_products):
+            entry = None
+            if product_to_manufacturer is not None:
+                if isinstance(product_to_manufacturer, dict):
+                    if p in product_to_manufacturer:
+                        entry = product_to_manufacturer[p]
+                    elif str(p) in product_to_manufacturer:
+                        entry = product_to_manufacturer[str(p)]
+                elif p < len(product_to_manufacturer):
+                    entry = product_to_manufacturer[p]
+
+            if entry is None:
+                suppliers = np.array(self.supplier_index, dtype=int)
+                if suppliers.size == 0:
+                    shares = np.array([], dtype=float)
+                else:
+                    shares = np.full(suppliers.size, 1.0 / suppliers.size, dtype=float)
+            else:
+                suppliers, shares = self._parse_routing_entry(entry, product=p)
+
+            self.product_routing.append((suppliers, shares))
+
+    def _parse_routing_entry(self, entry, product: int):
+        """Parse one routing entry into (suppliers, normalized shares).
+
+        Accepted forms:
+            int m                 -> 100% to supplier m
+            [m0, m1, ...]         -> equal split across the listed suppliers
+            {m0: w0, m1: w1, ...} -> weighted split (weights normalized)
+        Every referenced supplier must be a connected supplier of this agent.
+        """
+        if isinstance(entry, dict):
+            items = sorted((int(k), float(v)) for k, v in entry.items())
+            suppliers = np.array([k for k, _ in items], dtype=int)
+            weights = np.array([w for _, w in items], dtype=float)
+        elif isinstance(entry, (list, tuple, np.ndarray)):
+            suppliers = np.array([int(m) for m in entry], dtype=int)
+            weights = np.ones(suppliers.size, dtype=float)
+        else:
+            suppliers = np.array([int(entry)], dtype=int)
+            weights = np.ones(1, dtype=float)
+
+        total = float(np.sum(weights))
+        if suppliers.size == 0 or total <= 0.0:
+            raise ValueError(
+                f"Agent {self.id} level {self.sc_level}: invalid routing entry "
+                f"{entry!r} for product {product}."
+            )
+        shares = weights / total
+
+        connected = set(int(s) for s in self.supplier_index)
+        for m in suppliers:
+            if int(m) not in connected:
+                raise ValueError(
+                    f"Agent {self.id} level {self.sc_level}: product {product} is "
+                    f"routed to supplier {int(m)}, which is not a connected supplier "
+                    f"(connected: {sorted(connected)}). Update the adjacency list or "
+                    f"the product_to_manufacturer map."
+                )
+
+        return suppliers, shares
 
     def _get_dynamic_supplier_allocation_cfg(self) -> dict:
         """Read dynamic supplier-allocation options from the config.
@@ -454,31 +646,46 @@ class Agent():
         return data
 
     def _receive_shipment(self) -> None:
-        """Receive the shipment and update inventory and reporting lists
+        """Receive shipments per product and update inventory and reporting lists.
+
+        Each product has its own inventory and its own arrival queue (product p
+        ships from its own manufacturer, possibly with a different lead time).
+        Flat reporting stores the aggregate; per-product detail is tracked too.
+        For a single-product agent this is byte-identical to the scalar version.
         """
 
-        self.inventory_history.append(float(self.current_inv))  # add current inv to history before shipment arrives
+        # record inventory BEFORE arrivals (aggregate + per product)
+        self.inventory_history.append(float(np.sum(self.current_inv)))
+        for p in range(self.num_products):
+            self.inventory_history_by_product[p].append(float(self.current_inv[p]))
 
-        shipment_size = self.shipment_queue.get()  # shipment arrives
-        shipment_size = self._as_scalar(shipment_size, name="received shipment")
+        total_shipment = 0.0
+        for p in range(self.num_products):
+            shipment_size = self.shipment_queues[p].get()  # shipment arrives
+            shipment_size = self._as_scalar(shipment_size, name="received shipment")
 
-        # check if old orders are available: only needed for the start of the simulation
-        self.current_inv = float(self.current_inv) + shipment_size  # update current inventory
+            self.current_inv[p] = float(self.current_inv[p]) + shipment_size
 
-        # ToDo: Track possible waste
-        if self.current_inv > self.inv_capacity:  # if the order can not be stored - it is lost and current inv is max capacity
-            self.current_inv = self.inv_capacity
+            # ToDo: Track possible waste. Overflow above capacity is lost.
+            if self.current_inv[p] > self.inv_capacity[p]:
+                self.current_inv[p] = self.inv_capacity[p]
 
-        self.received_shipment_history.append(shipment_size)  # add current shipment to shipment history
+            self.received_shipment_history_by_product[p].append(shipment_size)
+            total_shipment += shipment_size
 
-        # self.inventory_history.append(self.current_inv)  # add current inv after shipment arrives
+        self.received_shipment_history.append(total_shipment)
 
     def _sell(self) -> None:
-        """Sell the goods
+        """Sell the goods, per product.
 
         1) Track Demand
-        2) Update inventory
+        2) Update inventory (independently per product)
         3) Track Backlog if necessary
+
+        Each product's inventory serves only the demand channels mapped to that
+        product. For a manufacturer (one product, several retailer channels)
+        this reduces to the original aggregate behaviour; for a retailer each
+        product is settled independently.
         """
         self.current_demand = self._as_vector(self.current_demand, name="current_demand")
         self.current_backlog = self._as_vector(self.current_backlog, name="current_backlog")
@@ -489,108 +696,109 @@ class Agent():
         for i in range(self.num_retailer):
             self.demand_by_retailer_history[i].append(float(self.current_demand[i]))
 
-        total_required = self.current_demand_sum + float(np.sum(self.current_backlog))
-        new_inv = float(self.current_inv) - total_required  # update current inventory
+        own_shipments = self._zero_vector()
+        new_backlog = self._zero_vector()
+        recorded_backlog = self._zero_vector()
 
-        # if not all demand could be satisfied: save as backlog and add to demand of next period
-        if new_inv < 0:
-            self._split_own_shipments(new_inv)
-        else:
-            self.back_log_list.append(np.abs(self.current_backlog).copy())
-            self._create_own_shipments()
-            self.current_inv = float(new_inv)
-            self.current_backlog = self._zero_vector()
+        for p in range(self.num_products):
+            channels = self._channels_of_product[p]
+            incoming_backlog = self.current_backlog[channels]
+            required = self.current_demand[channels] + incoming_backlog  # per channel
+            total_required = float(np.sum(required))
+            inv_p = float(self.current_inv[p])
+            new_inv_p = inv_p - total_required
 
-        # self.inventory_history.append(self.current_inv) # track current inv after selling own goods
+            if new_inv_p < 0:
+                # not all demand can be satisfied: ship proportionally, backlog rest
+                if total_required <= 0:
+                    proportions = np.zeros(channels.size, dtype=float)
+                else:
+                    proportions = required / total_required
+                available_inventory = max(inv_p, 0.0)
+                ship = np.trunc(available_inventory * proportions)
+                self.current_inv[p] = inv_p - float(np.sum(ship))
+                resulting_backlog = required - ship
+                own_shipments[channels] = ship
+                new_backlog[channels] = resulting_backlog
+                recorded_backlog[channels] = np.abs(resulting_backlog)
+            else:
+                own_shipments[channels] = required
+                self.current_inv[p] = new_inv_p
+                # channels of a fully-served product carry no backlog forward;
+                # record the (now cleared) incoming backlog, matching the legacy
+                # single-product bookkeeping.
+                recorded_backlog[channels] = np.abs(incoming_backlog)
 
-        self.own_shipments = self._as_vector(self.own_shipments, name="own_shipments")
+        self.current_backlog = new_backlog
+        self.back_log_list.append(recorded_backlog)
+
+        self.own_shipments = self._as_vector(own_shipments, name="own_shipments")
         self.departed_shipment_history.append(self.own_shipments.copy())
 
-    def _create_own_shipments(self) -> None:
-        """creates the shipments to satisfied demand
+    def _compute_orders(self, d_est) -> None:
+        """Turn a per-channel forecast into per-product orders and record them.
+
+        d_est is one forecast per demand channel. Each product's order is
+        computed from the forecast(s) of the channels feeding it and that
+        product's own inventory. For a retailer channel==product, so this is a
+        strict per-product order; for a manufacturer all channels feed the single
+        product, so the forecasts are summed (the original aggregate behaviour).
         """
-        self.current_demand = self._as_vector(self.current_demand, name="current_demand")
-        self.current_backlog = self._as_vector(self.current_backlog, name="current_backlog")
-        self.own_shipments = self.current_demand + self.current_backlog
-
-    def _split_own_shipments(self, new_inv) -> None:
-        """split shipment proportionally if it can not be satisfied fully
-        """
-        self.current_demand = self._as_vector(self.current_demand, name="current_demand")
-        self.current_backlog = self._as_vector(self.current_backlog, name="current_backlog")
-
-        total_required = self.current_demand_sum + float(np.sum(self.current_backlog))
-
-        # FIX:
-        # Previously this branch used proportions = 0, which made own_shipments
-        # a scalar. Always keep it vector-shaped.
-        if total_required <= 0:
-            proportions = self._zero_vector()
-        else:
-            proportions = (self.current_demand + self.current_backlog) / total_required
-
-        available_inventory = max(float(self.current_inv), 0.0)
-        self.own_shipments = np.trunc(available_inventory * proportions)
-        self.own_shipments = self._as_vector(self.own_shipments, name="own_shipments")
-
-        self.current_inv = float(self.current_inv) - float(np.sum(self.own_shipments))
-        self.current_backlog = (self.current_demand + self.current_backlog) - self.own_shipments
-        self.current_backlog = self._as_vector(self.current_backlog, name="current_backlog")
-
-        self.back_log_list.append(np.abs(self.current_backlog).copy())
-
-    def _replenish_inv(self) -> None:
-        """Replenish the Inventory by Forecasting Demand and Calculating the Order Size
-        """
-        data = self.__build_prediction_feature()  # get data for prediction
-
-        d_est = self.forecasting_model.predict(data)  # forecast the demand
         d_est = self._as_vector(d_est, name="forecast d_est")
 
         for i in range(self.num_retailer):
             self.forecast_by_retailer_history[i].append(float(d_est[i]))
 
-        d_est_sum = float(np.sum(d_est))
-        self.forecast_history.append(d_est_sum)  # add current demand forecast to history of demand forecasts
+        # aggregate forecast, kept for backward-compatible flat reporting
+        self.forecast_history.append(float(np.sum(d_est)))
 
-        order = self.replenishment.compute_order_sum(
-            d_est=d_est_sum,
-            currnet_inv=self.current_inv
-        )  # compute order size
-        self.order_history.append(order)  # add order to order history
+        orders = np.zeros(self.num_products, dtype=float)
+        for p in range(self.num_products):
+            channels = self._channels_of_product[p]
+            d_est_p = float(np.sum(d_est[channels]))
+            order_p = self.replenishment[p].compute_order_sum(
+                d_est=d_est_p,
+                currnet_inv=float(self.current_inv[p]),
+            )
+            orders[p] = order_p
+            self.order_history_by_product[p].append(order_p)
+            self.forecast_history_by_product[p].append(d_est_p)
 
-    def _replenish_inv_multichannel(self, predictions) -> None:
+        self.order_by_product = orders
+        # aggregate order, kept for backward-compatible flat reporting / bullwhip
+        self.order_history.append(float(np.sum(orders)))
+
+    def _replenish_inv(self) -> None:
         """Replenish the Inventory by Forecasting Demand and Calculating the Order Size
         """
         data = self.__build_prediction_feature()  # get data for prediction
+        d_est = self.forecasting_model.predict(data)  # forecast the demand
+        self._compute_orders(d_est)
 
-        d_est = predictions  # forecast the demand
-        d_est = self._as_vector(d_est, name="multichannel predictions")
-
-        for i in range(self.num_retailer):
-            self.forecast_by_retailer_history[i].append(float(d_est[i]))
-
-        d_est_sum = float(np.sum(d_est))
-        self.forecast_history.append(d_est_sum)  # add current demand forecast to history of demand forecasts
-
-        order = self.replenishment.compute_order_sum(
-            d_est=d_est_sum,
-            currnet_inv=self.current_inv
-        )  # compute order size
-        self.order_history.append(order)  # add order to order history
+    def _replenish_inv_multichannel(self, predictions) -> None:
+        """Replenish the Inventory using externally supplied (collaborative) forecasts.
+        """
+        # __build_prediction_feature is kept for parity with the original call
+        # order even though the prediction is passed in directly.
+        _ = self.__build_prediction_feature()
+        self._compute_orders(predictions)
 
     def _split_orders(self) -> list:
-        """Split the current order among this agent's suppliers.
+        """Route this agent's orders to its suppliers.
 
-        By default, this reproduces the old behavior exactly: fixed equal
-        allocation across connected suppliers. If dynamic supplier allocation is
-        enabled in the config, the allocation is allowed to deviate slightly and
-        smoothly from equal allocation.
+        Retailers (sc_level 0) route each product's order to that product's
+        supplier(s) via the product routing map. With the default routing (equal
+        split across all connected suppliers) and a single product this
+        reproduces the legacy gamma split exactly. Upstream agents keep the
+        legacy aggregate gamma split.
 
         Returns:
-            list: list containing the order size of each supplier of the next supply chain level
+            list: order size for each supplier of the next supply chain level
         """
+        if self.sc_level == 0:
+            return self._split_orders_by_product()
 
+        # legacy aggregate split for upstream (single-product) agents
         gamma_new = self._get_supplier_allocation()
         self.supplier_allocation_history.append(gamma_new.copy())
 
@@ -610,6 +818,38 @@ class Agent():
         for i, ind_ in enumerate(self.supplier_index):
             demand_list[ind_] = demand_supplier[i]
 
+        self.order_per_supplier_history.append(demand_list)
+
+        return demand_list
+
+    def _split_orders_by_product(self) -> list:
+        """Route each product's order to its configured supplier(s).
+
+        Each product p distributes order_by_product[p] across product_routing[p]
+        using the same round-all-but-last-supplier scheme as the legacy split,
+        so the single-product default is byte-identical. Contributions from
+        every product accumulate into one order per supplier.
+        """
+        demand_list = np.zeros(self.supplier_num, dtype=float)
+
+        for p in range(self.num_products):
+            suppliers, shares = self.product_routing[p]
+            order_p = float(self.order_by_product[p])
+
+            if suppliers.size == 0:
+                continue
+
+            dist = order_p * np.asarray(shares, dtype=float)
+            d = 0
+            for i in range(len(dist) - 1):
+                dist[i] = np.round(dist[i])
+                d = np.round(dist[i]) + d
+            dist[-1] = order_p - d
+
+            for i, ind_ in enumerate(suppliers):
+                demand_list[int(ind_)] += dist[i]
+
+        demand_list = demand_list.tolist()
         self.order_per_supplier_history.append(demand_list)
 
         return demand_list
@@ -677,10 +917,39 @@ class Agent():
 
         return self.forecasting_model
 
-    def set_shipment(self, shipment: int) -> None:
-        # Incoming shipment replenishes scalar inventory. If a vector arrives,
-        # sum it before putting it into the queue.
-        self.shipment_queue.put(self._as_scalar(shipment, name="set_shipment shipment"))
+    def set_shipment(self, shipment) -> None:
+        """Enqueue an incoming shipment into the per-product arrival queues.
+
+        A per-product vector (length num_products) routes each entry to its
+        product queue. A scalar is only valid for a single-product agent (e.g. a
+        manufacturer replenishing its one product) and matches the legacy path.
+        """
+        arr = np.asarray(shipment, dtype=float).reshape(-1)
+
+        if arr.size == self.num_products:
+            for p in range(self.num_products):
+                self.shipment_queues[p].put(float(arr[p]))
+        elif arr.size == 1:
+            if self.num_products != 1:
+                raise ValueError(
+                    f"Agent {self.id} level {self.sc_level}: set_shipment received a "
+                    f"scalar but num_products={self.num_products}. Provide one value "
+                    "per product."
+                )
+            self.shipment_queues[0].put(float(arr[0]))
+        else:
+            raise ValueError(
+                f"Agent {self.id} level {self.sc_level}: set_shipment received shape "
+                f"{np.shape(shipment)}, expected num_products={self.num_products}."
+            )
+
+    def _product_demand_series(self, p: int) -> np.ndarray:
+        """Aggregate demand history for product p (sum over its channels)."""
+        channels = self._channels_of_product[p]
+        series = np.zeros(len(self.demand_sum_history), dtype=float)
+        for c in channels:
+            series += np.asarray(self.demand_by_retailer_history[c], dtype=float)
+        return series
 
     def get_variance_ratio(self, last_t: int) -> float:
 
@@ -689,6 +958,24 @@ class Agent():
 
         return np.round((var_orders / var_demand), 2)
 
+    def get_variance_ratio_by_product(self, last_t: int) -> list:
+        """Per-product bullwhip (order variance / demand variance).
+
+        Measuring per product avoids hiding amplification behind the aggregate
+        for a multi-product retailer.
+        """
+        ratios = []
+        for p in range(self.num_products):
+            demand_series = self._product_demand_series(p)[-last_t:]
+            order_series = np.asarray(self.order_history_by_product[p][-last_t:], dtype=float)
+            var_demand = np.var(demand_series)
+            var_orders = np.var(order_series)
+            ratios.append(np.round((var_orders / var_demand), 2))
+        return ratios
+
     def set_variance_ratio(self, last_t: int) -> None:
 
         self.variance_ratio.append(self.get_variance_ratio(last_t))
+        per_product = self.get_variance_ratio_by_product(last_t)
+        for p in range(self.num_products):
+            self.variance_ratio_by_product[p].append(per_product[p])

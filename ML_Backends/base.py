@@ -2,6 +2,26 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 
+def assert_equal_channel_counts(level_agents, backend_name: str) -> int:
+    """Assert every agent at a collaborative level has the same channel count.
+
+    Split backends fuse the per-channel encodings of all agents at the
+    collaborative level and size a shared server / dense head to the total
+    channel count assuming a uniform per-agent count. Unequal counts would
+    silently misalign the fusion, so this fails loudly instead.
+
+    Returns the common channel count.
+    """
+    counts = [int(agent.num_retailer) for agent in level_agents]
+    if len(set(counts)) > 1:
+        raise ValueError(
+            f"{backend_name}: all agents at the collaborative level must have the "
+            f"same number of channels (num_retailer), got {counts}. The split "
+            "server/dense heads assume a uniform per-agent channel count."
+        )
+    return counts[0] if counts else 0
+
+
 class ForecastingBackend(ABC):
     """Pluggable forecasting backend.
 

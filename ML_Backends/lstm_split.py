@@ -13,7 +13,7 @@ from ML_Models.model import LSTM_Model, NetLocal2
 from helpers.helper_classes import MultiChannel_LSTM, EarlyStopping
 from helpers.helpers import create_dataset, select_gpu
 
-from .base import ForecastingBackend
+from .base import ForecastingBackend, assert_equal_channel_counts
 from . import register_backend
 
 logger = logging.getLogger('logger')
@@ -218,6 +218,9 @@ class LSTMSplitBackend(ForecastingBackend):
 
 def _split_training_multichannel_lstm(simulation, market, supply_chain, sc_agent_list, cfg):
     logger.info("Starting Synchronous Training")
+    # The shared server + per-agent dense heads assume every collaborative agent
+    # exposes the same number of channels; fail loudly if not.
+    assert_equal_channel_counts(sc_agent_list[1], "split_multichannel LSTM")
     loss_cal = "aggregated"  # individual or aggregated
     loss_fn = nn.L1Loss()
     device = select_gpu()

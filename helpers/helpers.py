@@ -272,10 +272,81 @@ def load_market_demand_from_file(market_cfg: dict) -> np.ndarray:
 # Simulation object creation
 # =============================================================================
 
+def _create_market_factor_model(market_cfg, T, retailer_num, num_products):
+    """Construct the multi-product MarketFactorModel.
+
+    The class is provided separately (market_factor_model.py / re-exported from
+    Simulation_Component.market). It must emit R*P demand streams in order
+    s = retailer*P + product via split_demand_on_time(t). This is the single
+    integration point: if the class's constructor signature differs, adjust the
+    keyword arguments here.
+    """
+    try:
+        # Prefer an explicit module; fall back to the market package export.
+        try:
+            from Simulation_Component.market_factor_model import MarketFactorModel
+        except ImportError:
+            from Simulation_Component.market import MarketFactorModel  # noqa: F401
+    except ImportError as exc:
+        raise ImportError(
+            "num_products > 1 requires MarketFactorModel, which was not found. "
+            "Add Simulation_Component/market_factor_model.py (or export "
+            "MarketFactorModel from Simulation_Component.market)."
+        ) from exc
+
+    random_walk = market_cfg["random_walk"]
+    # market.demand_split must be an R*P vector (stream order s = retailer*P + p)
+    # summing to 1.
+    market_demand_split = market_cfg["demand_split"]
+
+    # Optional factor-model knobs (safe defaults reproduce a single shared
+    # signal). These are the levers the collaborative-forecasting study sweeps:
+    #   lam  in [0,1] : fraction of each stream's fluctuation from the shared factor
+    #   tau  >= 0     : lead-lag delay between consecutive products
+    factor_cfg = market_cfg.get("factor_model", {}) if isinstance(market_cfg.get("factor_model"), dict) else {}
+
+    def _fm(key, default):
+        if key in factor_cfg:
+            return factor_cfg[key]
+        return market_cfg.get(key, default)
+
+    kwargs = dict(
+        product_num=num_products,
+        lam=float(_fm("lam", 1.0)),
+        tau=int(_fm("tau", 0)),
+        idio_noise_scale=float(_fm("idio_noise_scale", 1.0)),
+        shock_prob=float(_fm("shock_prob", 0.0)),
+        shock_mag=float(_fm("shock_mag", 0.0)),
+    )
+    idio_freqs = _fm("idio_freqs", None)
+    idio_phases = _fm("idio_phases", None)
+    seed = _fm("seed", None)
+    if idio_freqs is not None:
+        kwargs["idio_freqs"] = idio_freqs
+    if idio_phases is not None:
+        kwargs["idio_phases"] = idio_phases
+    if seed is not None:
+        kwargs["seed"] = seed
+
+    return MarketFactorModel(
+        T,
+        market_cfg["primary_demand"],
+        market_cfg["trend_magnitude"],
+        market_cfg["seasonality_magnitude"],
+        market_cfg["seasonality_frequncy"],
+        random_walk["mean"],
+        random_walk["variance"],
+        retailer_num,
+        market_demand_split,
+        **kwargs,
+    )
+
+
 def _create_market_from_cfg(
     cfg: dict,
     T: int,
     agents_per_level,
+    num_products: int = 1,
 ):
     """
     Create either the original artificial market or a real-data market.
@@ -283,12 +354,23 @@ def _create_market_from_cfg(
     Backward compatibility:
         market.data_scource: null  -> MarketArtifical, exactly like before
         market.data_scource: path  -> MarketDataSource using Excel/CSV demand
+
+    Multi-product (num_products > 1) uses MarketFactorModel, which emits one
+    demand stream per (retailer, product) pair in order s = retailer*P + product.
     """
     market_cfg = cfg["market"]
     data_source = _get_market_data_source(market_cfg)
 
     market_demand_split = market_cfg["demand_split"]
     retailer_num = agents_per_level[0]
+
+    if num_products > 1:
+        return _create_market_factor_model(
+            market_cfg=market_cfg,
+            T=T,
+            retailer_num=retailer_num,
+            num_products=num_products,
+        )
 
     if _is_missing_data_source(data_source):
         random_walk = market_cfg["random_walk"]
@@ -382,6 +464,15 @@ def _build_simulation_objects_from_cfg(cfg: dict):
     agents_per_level = sc_all["agents_per_level"]
     sc_levels = sc_all["sc_levels"]
 
+    # Multi-product settings. num_products defaults to 1, which collapses to the
+    # original single-product semantics. product_to_manufacturer is an optional
+    # routing map (product index -> supplier(s)); None means "equal split across
+    # all connected suppliers", reproducing the legacy gamma split.
+    num_products = int(
+        sc_all.get("num_products", cfg.get("market", {}).get("num_products", 1))
+    )
+    product_to_manufacturer = sc_all.get("product_to_manufacturer", None)
+
     simulation = Simulation(
         T=T,
         sim_runs=sim_runs,
@@ -398,6 +489,7 @@ def _build_simulation_objects_from_cfg(cfg: dict):
         cfg=cfg,
         T=T,
         agents_per_level=agents_per_level,
+        num_products=num_products,
     )
 
     sc_agent_list = []
@@ -430,6 +522,9 @@ def _build_simulation_objects_from_cfg(cfg: dict):
                 batch_size=batch_size,
                 learning_rate=learning_rate,
                 momentum=momentum,
+                num_products=num_products,
+                # Only retailers (level 0) use the product routing map.
+                product_to_manufacturer=product_to_manufacturer if i == 0 else None,
             )
             agent_list.append(agent)
 
@@ -437,7 +532,83 @@ def _build_simulation_objects_from_cfg(cfg: dict):
 
     supply_chain = Supply_Chain(sc_adjacency, sc_lead_time)
 
+    # Expose multi-product routing to the runner. product_to_suppliers[p] is the
+    # list of manufacturer indices that produce product p, derived from the
+    # retailers' routing so it always matches what the retailers actually do.
+    supply_chain.num_products = num_products
+    supply_chain.product_to_suppliers = _derive_product_to_suppliers(sc_agent_list)
+    _assert_routing_valid(sc_agent_list, supply_chain.product_to_suppliers)
+
     return simulation, market, supply_chain, sc_agent_list
+
+
+def _assert_routing_valid(sc_agent_list, product_to_suppliers) -> None:
+    """Fail loudly unless each manufacturer receives exactly one product's streams.
+
+    A silent mis-routing (a manufacturer fed by two different products, or a
+    manufacturer's channel count not matching the retailers that actually route
+    to it) would invalidate every experiment, so it is checked here rather than
+    left to surface as a subtle numeric error.
+    """
+    if len(sc_agent_list) < 2:
+        return
+
+    retailers = sc_agent_list[0]
+    manufacturers = sc_agent_list[1]
+
+    # inverse map: manufacturer index -> set of products routed to it
+    manufacturer_products = {}
+    for p, suppliers in enumerate(product_to_suppliers):
+        for m in suppliers:
+            manufacturer_products.setdefault(int(m), set()).add(p)
+
+    for m, products in manufacturer_products.items():
+        if len(products) != 1:
+            raise ValueError(
+                f"Manufacturer {m} would receive order streams for products "
+                f"{sorted(products)}. Each manufacturer must produce exactly one "
+                "product; check product_to_manufacturer."
+            )
+        product = next(iter(products))
+        # every retailer routing this product to m contributes one channel
+        senders = sum(
+            1 for r in retailers
+            if m in {int(s) for s in r.product_routing[product][0]}
+        )
+        if manufacturers[m].num_retailer != senders:
+            raise ValueError(
+                f"Manufacturer {m} has num_retailer={manufacturers[m].num_retailer} "
+                f"channels but {senders} retailer(s) route product {product} to it. "
+                "The level-0 adjacency and the product routing are inconsistent."
+            )
+
+
+def _derive_product_to_suppliers(sc_agent_list) -> list:
+    """Build product_index -> [manufacturer indices] from the retailers' routing.
+
+    Asserts every retailer routes each product to the same set of suppliers, so a
+    single global mapping is well defined (required by the per-product shipment
+    reassembly in the runner). Fails loudly otherwise.
+    """
+    retailers = sc_agent_list[0]
+    if not retailers:
+        return []
+
+    num_products = retailers[0].num_products
+    product_to_suppliers = []
+    for p in range(num_products):
+        suppliers = sorted(int(s) for s in retailers[0].product_routing[p][0])
+        for r in retailers[1:]:
+            other = sorted(int(s) for s in r.product_routing[p][0])
+            if other != suppliers:
+                raise ValueError(
+                    f"Retailer {r.id} routes product {p} to suppliers {other}, but "
+                    f"retailer {retailers[0].id} routes it to {suppliers}. "
+                    "Per-retailer routing differences are not supported; use a "
+                    "consistent product_to_manufacturer map."
+                )
+        product_to_suppliers.append(suppliers)
+    return product_to_suppliers
 
 
 def init_simulaltion(path: Path) -> list[Simulation, Market, Supply_Chain, list, dict]:

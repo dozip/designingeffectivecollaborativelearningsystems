@@ -45,7 +45,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from helpers.helpers import create_dataset, select_gpu
 from helpers.helper_classes import EarlyStopping
-from .base import ForecastingBackend
+from .base import ForecastingBackend, assert_equal_channel_counts
 from . import register_backend
 from .patchtst_local import RevIN, _compute_num_patches
 
@@ -424,6 +424,7 @@ def _train_split_patchtst(simulation, market, supply_chain, sc_agent_list, cfg):
     if not level_agents:
         logger.warning("No agents found at collaborative level %s", level)
         return []
+    assert_equal_channel_counts(level_agents, "split PatchTST")
 
     epochs = int(cfg["sim"]["epochs"])
     train_size = int(simulation.train_size)

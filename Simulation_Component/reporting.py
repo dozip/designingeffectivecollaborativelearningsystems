@@ -144,8 +144,12 @@ class Reporting():
         fig = plt.figure()
         plt.title("Market Demand and Retailer Demand over Time")
         plt.plot(df['demand'], label="market demand")
-        plt.plot(df['Demand_Retailer_0'], label="market demand Retailer 0")
-        plt.plot(df['Demand_Retailer_1'], label="market demand Retailer 1")
+        # One line per demand stream (R*P streams under multi-product); avoids
+        # hardcoding a fixed number of retailers/streams.
+        for col in df.columns:
+            if col == "demand":
+                continue
+            plt.plot(df[col], label=col)
         plt.legend(loc=1)
         path = Path(self.path_images, "market_reporting.png")
         fig.savefig(path)
@@ -217,7 +221,27 @@ class Reporting():
                 
                 for j in range(agent.num_retailer):
                     data.append(demand_per_retailer[j])
-                
+
+                # Per-product detail for multi-product agents (retailers). The
+                # flat inv/demand/forecast/order columns above are the
+                # aggregate (sum over products); these expose the per-product
+                # series so bullwhip can be measured per product. Only added
+                # when there is more than one product, so single-product runs
+                # keep byte-identical CSVs.
+                if getattr(agent, "num_products", 1) > 1:
+                    for p in range(agent.num_products):
+                        columns.append("Inv_Product_" + str(p))
+                    for p in range(agent.num_products):
+                        columns.append("Order_Product_" + str(p))
+                    for p in range(agent.num_products):
+                        columns.append("Forecast_Product_" + str(p))
+                    for p in range(agent.num_products):
+                        data.append(agent.inventory_history_by_product[p])
+                    for p in range(agent.num_products):
+                        data.append(agent.order_history_by_product[p])
+                    for p in range(agent.num_products):
+                        data.append(agent.forecast_history_by_product[p])
+
                 data = np.array(data).transpose()
                 # data = [id_list, inventory, demand, order, supplier_order, supplier_order_new]
 
@@ -286,6 +310,36 @@ class Reporting():
         df = pd.DataFrame(data=data, columns=columns)
         path = Path(self.path_data, "BWE_Measures.csv")
         df.to_csv(path, index=False)
+
+        # Per-product bullwhip. Aggregating over products would hide the
+        # amplification the study is about, so multi-product agents also report
+        # one bullwhip series per product. Only written when at least one agent
+        # is multi-product, so single-product runs are unchanged.
+        multi_product = any(
+            getattr(agent, "num_products", 1) > 1
+            for level in agent_list for agent in level
+        )
+        if not multi_product:
+            return
+
+        data_p = []
+        columns_p = ['level', 'agent_id', 'product']
+        max_periods = 0
+        for i, level in enumerate(agent_list):
+            for j, agent in enumerate(level):
+                by_product = getattr(agent, "variance_ratio_by_product", None)
+                if not by_product:
+                    continue
+                for p, series in enumerate(by_product):
+                    data_p.append([i, j, p] + list(series))
+                    max_periods = max(max_periods, len(series))
+        for m in range(max_periods):
+            columns_p.append("BWE_Measure_period_" + str(m))
+        # pad ragged rows so the DataFrame is rectangular
+        width = len(columns_p)
+        data_p = [row + [np.nan] * (width - len(row)) for row in data_p]
+        df_p = pd.DataFrame(data=data_p, columns=columns_p)
+        df_p.to_csv(Path(self.path_data, "BWE_Measures_by_product.csv"), index=False)
 
     def __create_BWE_reporting_over_runs(self, agent_list: list, run_id: int) -> None:
 

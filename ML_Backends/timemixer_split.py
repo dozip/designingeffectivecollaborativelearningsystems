@@ -33,7 +33,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from helpers.helpers import create_dataset, select_gpu
 from helpers.helper_classes import EarlyStopping
-from .base import ForecastingBackend
+from .base import ForecastingBackend, assert_equal_channel_counts
 from . import register_backend
 
 logger = logging.getLogger("logger")
@@ -640,6 +640,7 @@ def _train_split_timemixer_option_d(simulation, market, supply_chain, sc_agent_l
     if not level_agents:
         logger.warning("No agents found at collaborative level %s", level)
         return []
+    assert_equal_channel_counts(level_agents, "split TimeMixer")
 
     epochs = int(cfg["sim"]["epochs"])
     train_size = int(simulation.train_size)
