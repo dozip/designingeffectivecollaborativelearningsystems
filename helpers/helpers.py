@@ -342,6 +342,58 @@ def _create_market_factor_model(market_cfg, T, retailer_num, num_products):
     )
 
 
+def _create_market_data_source_multi_product(market_cfg, T, retailer_num, num_products):
+    """Build MarketDataSourceMultiProduct from one real data series per product.
+
+    market.data_scource must be a list with one entry per product. Each entry is
+    either a file path (string) or a dict of per-product overrides
+    (data_scource/data_source, demand_column, demand_scale_divisor,
+    demand_scale_multiplier, dataset_name). Each series is loaded with the same
+    loader used for the single-product real-data path.
+
+    market.demand_split is the R*P retailer-share vector (order s = retailer*P +
+    product), where each product's R shares sum to 1 (validated in the market).
+    """
+    entries = _get_market_data_source(market_cfg)
+    if not isinstance(entries, (list, tuple)):
+        raise ValueError(
+            "num_products > 1 with real data requires market.data_scource to be a "
+            "list with one entry per product (path or per-product dict). "
+            f"Got {type(entries).__name__}."
+        )
+    if len(entries) != num_products:
+        raise ValueError(
+            f"market.data_scource has {len(entries)} entries but num_products="
+            f"{num_products}. Provide exactly one demand series per product."
+        )
+
+    product_data = []
+    for p, entry in enumerate(entries):
+        per_cfg = dict(market_cfg)
+        if isinstance(entry, dict):
+            per_cfg.update(entry)
+            # normalise the (optionally correctly-spelled) source key
+            if "data_source" in entry and "data_scource" not in entry:
+                per_cfg["data_scource"] = entry["data_source"]
+        else:
+            per_cfg["data_scource"] = entry
+
+        data = load_market_demand_from_file(per_cfg)
+        if len(data) < T:
+            raise ValueError(
+                f"Product {p} demand series is too short: length {len(data)} < "
+                f"required T={T}."
+            )
+        product_data.append(np.asarray(data, dtype=float))
+
+    return MarketDataSourceMultiProduct(
+        product_data=product_data,
+        retailer_num=retailer_num,
+        num_products=num_products,
+        market_demand_split=market_cfg["demand_split"],
+    )
+
+
 def _create_market_from_cfg(
     cfg: dict,
     T: int,
@@ -365,6 +417,15 @@ def _create_market_from_cfg(
     retailer_num = agents_per_level[0]
 
     if num_products > 1:
+        # Real per-product data if a source is given, otherwise the synthetic
+        # factor model.
+        if not _is_missing_data_source(data_source):
+            return _create_market_data_source_multi_product(
+                market_cfg=market_cfg,
+                T=T,
+                retailer_num=retailer_num,
+                num_products=num_products,
+            )
         return _create_market_factor_model(
             market_cfg=market_cfg,
             T=T,
