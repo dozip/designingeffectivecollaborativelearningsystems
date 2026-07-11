@@ -49,7 +49,6 @@ def _cfg(paths):
         "market": {
             "data_scource": [paths["A"], paths["B"], paths["C"]],
             "demand_column": "demand",
-            "demand_scale_divisor": 1, "demand_scale_multiplier": 1,
             "primary_demand": 1000, "trend_magnitude": 2, "seasonality_magnitude": 5,
             "seasonality_frequncy": 7, "random_walk": {"mean": 10, "variance": 1},
             # retailer shares 0.7/0.3 for every product; order s = r*P + p

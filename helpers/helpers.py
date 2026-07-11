@@ -210,14 +210,22 @@ def load_market_demand_from_file(market_cfg: dict) -> np.ndarray:
         market.demand_column:      optional; if missing, inferred
         market.date_column:        optional; used only for sorting
         market.sheet_name:         optional for Excel; default 0
-        market.demand_scale_divisor: optional; default 1000 to preserve old behavior
-        market.demand_scale_multiplier: optional; default 1
 
-    The old implementation did:
-        data = values / 1000
-    Therefore this loader defaults to demand_scale_divisor=1000.
-    Set demand_scale_divisor: 1 in the config if you want raw values.
+    Demand values are used as-is (only rounded to whole numbers). If you need a
+    different magnitude, pre-scale the data file. The former
+    demand_scale_divisor / demand_scale_multiplier options were removed.
     """
+    # Demand scaling was removed: values are used as-is (rounded to integers).
+    # Fail loudly if a config still sets the old keys, so nobody silently gets
+    # unscaled data where they expected scaling.
+    for removed_key in ("demand_scale_divisor", "demand_scale_multiplier"):
+        if removed_key in market_cfg:
+            raise ValueError(
+                f"market.{removed_key} has been removed. Demand values are now used "
+                "as-is (only rounded to whole numbers); pre-scale the data file if you "
+                "need a different magnitude."
+            )
+
     data_source = _get_market_data_source(market_cfg)
 
     if _is_missing_data_source(data_source):
@@ -256,14 +264,6 @@ def load_market_demand_from_file(market_cfg: dict) -> np.ndarray:
             f"No numeric demand values found in {data_path}. "
             f"Set market.demand_column explicitly. Available columns: {list(df.columns)}"
         )
-
-    demand_scale_divisor = float(market_cfg.get("demand_scale_divisor", 1000))
-    demand_scale_multiplier = float(market_cfg.get("demand_scale_multiplier", 1))
-
-    if demand_scale_divisor == 0:
-        raise ValueError("market.demand_scale_divisor must not be 0.")
-
-    demand = (demand / demand_scale_divisor) * demand_scale_multiplier
 
     return np.round(demand, 0)
 
@@ -347,9 +347,8 @@ def _create_market_data_source_multi_product(market_cfg, T, retailer_num, num_pr
 
     market.data_scource must be a list with one entry per product. Each entry is
     either a file path (string) or a dict of per-product overrides
-    (data_scource/data_source, demand_column, demand_scale_divisor,
-    demand_scale_multiplier, dataset_name). Each series is loaded with the same
-    loader used for the single-product real-data path.
+    (data_scource/data_source, demand_column, dataset_name). Each series is
+    loaded with the same loader used for the single-product real-data path.
 
     market.demand_split is the R*P retailer-share vector (order s = retailer*P +
     product), where each product's R shares sum to 1 (validated in the market).
