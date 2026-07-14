@@ -13,10 +13,34 @@ from ML_Models.model import LSTM_Model, NetLocal2
 from helpers.helper_classes import MultiChannel_LSTM, EarlyStopping
 from helpers.helpers import create_dataset, select_gpu
 
-from .base import ForecastingBackend
+from .base import ForecastingBackend, resolve_local_channel_fusion
 from . import register_backend
 
 logger = logging.getLogger('logger')
+
+
+def _dense_inputs(lstm_outputs_detached, channel_fusion: bool):
+    """What each channel's dense head consumes.
+
+    channel_fusion=True  -> the concatenation of every channel's LSTM output
+                            (this agent's own channels only).
+    channel_fusion=False -> each head sees only its own channel's LSTM output.
+
+    Fails loudly on a shape mismatch rather than letting torch broadcast.
+    """
+    shapes = [tuple(t.shape) for t in lstm_outputs_detached]
+    if any(len(s) != 3 for s in shapes):
+        raise ValueError(f"expected 3-D LSTM outputs [B, L, H], got {shapes}")
+    if len({s[:2] for s in shapes}) != 1:
+        raise ValueError(f"LSTM outputs disagree on (batch, length): {shapes}")
+    if len({s[2] for s in shapes}) != 1:
+        raise ValueError(f"LSTM outputs disagree on hidden size: {shapes}")
+
+    if not channel_fusion:
+        return list(lstm_outputs_detached)
+    fusion = torch.cat(lstm_outputs_detached, axis=2)
+    return [fusion] * len(lstm_outputs_detached)
+
 
 def _cfg_get_early_stopping(cfg, key, default):
     """Read one global early-stopping setting from YAML.
@@ -77,16 +101,21 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
     device = select_gpu()
     pin_memory = getattr(device, "type", None) == "cuda"
     val_loss_list = []
+    channel_fusion = resolve_local_channel_fusion(cfg, "lstm")
 
     for i, agent in enumerate(sc_agent_list[1]):  # change 1 to variable for dynamics
-        logger.info(f"Training agent: {i}")
+        logger.info(f"Training agent: {i} (local_channel_fusion={channel_fusion})")
 
         val_loss_agent = []
 
         lstm_input_dim = 1
         lstm_output_dim = 24
         lstm_hidden_dim = 48
-        dense_input_dim = agent.num_retailer * lstm_hidden_dim
+        # Fusion: every dense head consumes all of this agent's channels.
+        # No fusion: every dense head consumes only its own channel.
+        dense_input_dim = (
+            agent.num_retailer * lstm_hidden_dim if channel_fusion else lstm_hidden_dim
+        )
         dense_ouput_dim = 1
 
         learning_rate = 0.001
@@ -201,14 +230,14 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
                     lstm_outputs_detached.append(output_detached)
 
                 logger.debug("Feature Fusion")
-                fusion = torch.cat(lstm_outputs_detached, axis=2)
+                dense_in = _dense_inputs(lstm_outputs_detached, channel_fusion)
                 # get dense output
                 logger.debug("Output Dense")
                 dense_outputs = []
                 dense_outputs_detached = []
 
                 for j, idx in enumerate(features_list):
-                    output = dense_models[j](fusion)
+                    output = dense_models[j](dense_in[j])
                     output_detached = output.clone().detach().requires_grad_(True)
                     dense_outputs.append(output)
                     dense_outputs_detached.append(output_detached)
@@ -289,16 +318,16 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
                     rescaled_labels = val_data_list[i][1][:, -1, :] * scaler.scale_[i] + scaler.mean_[i]
                     rescaled_label_list.append(rescaled_labels)
 
-                # server routine
+                # within-agent channel fusion (no server, no peer channels)
                 logger.debug("Feature Fusion")
-                fusion = torch.cat(lstm_outputs_detached, axis=2)
+                dense_in = _dense_inputs(lstm_outputs_detached, channel_fusion)
 
                 # get dense output
                 logger.debug("Output Dense")
                 dense_outputs = []
                 dense_outputs_detached = []
                 for i, idx in enumerate(range(agent.num_retailer)):
-                    output = dense_models[i](fusion)
+                    output = dense_models[i](dense_in[i])
                     output_detached = output.clone().detach().requires_grad_(True)
                     dense_outputs.append(output)
                     dense_outputs_detached.append(output_detached)
@@ -357,7 +386,7 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
             )
         logger.debug(f"Training-Loss: {training_loss_epoch}")
 
-        model = MultiChannel_LSTM(num_channels=agent.num_retailer, lstm_model=lstm_models, dense_model=dense_models, scaler=scaler, device=device)
+        model = MultiChannel_LSTM(num_channels=agent.num_retailer, lstm_model=lstm_models, dense_model=dense_models, scaler=scaler, device=device, channel_fusion=channel_fusion)
 
         agent.set_forecasting_model(model)
         val_loss_list.append(val_loss_agent)

@@ -175,13 +175,16 @@ class SplittNN(Forecasting):
 
 class MultiChannel_LSTM(Forecasting):
 
-    def __init__(self, num_channels, lstm_model, dense_model, scaler, device) -> None:
+    def __init__(self, num_channels, lstm_model, dense_model, scaler, device, channel_fusion=True) -> None:
         super().__init__()
         self.num_channels = num_channels
         self.lstm_model = lstm_model
         self.dense_model = dense_model
         self.scaler = scaler
         self.device = device
+        # True: each dense head consumes the concatenation of this agent's own
+        # channels. False: each head consumes only its own channel.
+        self.channel_fusion = bool(channel_fusion)
 
     def train(self):
         pass
@@ -199,13 +202,17 @@ class MultiChannel_LSTM(Forecasting):
             output = self.lstm_model[i](input_tensor)
             output_lstm.append(output)
 
-        # feature fuesion
-        fusion = torch.cat((output_lstm), axis = 2)
+        # feature fuesion (within this agent only)
+        if self.channel_fusion:
+            fusion = torch.cat((output_lstm), axis = 2)
+            dense_in = [fusion] * self.num_channels
+        else:
+            dense_in = output_lstm
 
         # forward dense
         output_dense = []
         for i in range(self.num_channels):
-            output= self.dense_model[i](fusion)[:, -1, :]
+            output= self.dense_model[i](dense_in[i])[:, -1, :]
             output_rescaled = (output.item()*self.scaler.scale_[i])+self.scaler.mean_[i]
             output_dense.append(output_rescaled)
 

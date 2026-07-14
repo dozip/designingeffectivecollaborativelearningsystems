@@ -2,6 +2,37 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 
+def resolve_local_channel_fusion(cfg: dict, section: str) -> bool:
+    """Resolve the `local_channel_fusion` flag for a local backend.
+
+    Meaning (identical for all three local backends):
+        True  — the agent jointly models every channel it observes *itself*:
+                the per-channel encoders run as usual, their latent
+                representations are concatenated along the feature axis, and
+                every channel's prediction head consumes the concatenation.
+                No server, no peer agent's data.
+        False — every channel is a fully independent model: each head consumes
+                only its own channel's latent.
+
+    Resolution order (most specific wins):
+        cfg[section]['local_channel_fusion']  ->  cfg['local_channel_fusion']  ->  True
+
+    The per-section override exists because the pre-fusion (asymmetric) results
+    need LSTM=True together with PatchTST/TimeMixer=False, which a single global
+    flag cannot express.
+    """
+    for holder in (cfg.get(section) if isinstance(cfg, dict) else None, cfg):
+        if isinstance(holder, dict) and "local_channel_fusion" in holder:
+            value = holder["local_channel_fusion"]
+            if not isinstance(value, bool):
+                raise ValueError(
+                    f"local_channel_fusion must be a bool, got {value!r} "
+                    f"({type(value).__name__})."
+                )
+            return value
+    return True
+
+
 def assert_equal_channel_counts(level_agents, backend_name: str) -> int:
     """Assert every agent at a collaborative level has the same channel count.
 

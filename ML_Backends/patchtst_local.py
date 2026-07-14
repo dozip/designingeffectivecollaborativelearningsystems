@@ -6,7 +6,13 @@ without cross-agent aggregation, and without shared weights between agents.
 
 Default behavior:
     - train agents at cfg['patchtst']['local_level'], default 1
-    - one independent PatchTST per retailer/channel of that agent
+    - one PatchTST backbone per retailer/channel of that agent
+    - within-agent channel fusion (local_channel_fusion, default true): the
+      per-channel backbones run independently, their latents are concatenated,
+      and every channel's head consumes the concatenation. The agent jointly
+      models the channels it observes itself — no server, no peer agent's data.
+      Set local_channel_fusion: false for fully independent per-channel models
+      (the pre-fusion behaviour).
     - one StandardScaler per agent, fitted on that agent's local retailer matrix
     - attach a forecasting object with predict(data), so normal simulation can use
       agent.act(...) -> forecasting_model.predict(data)
@@ -14,6 +20,10 @@ Default behavior:
 To train every level instead of only level 1:
     patchtst:
       local_level: all
+
+To reproduce the pre-fusion (independent-channel) baseline:
+    patchtst:
+      local_channel_fusion: false
 
 Model internals follow the official PatchTST repo (yuqinie98/PatchTST):
     - end-padding via nn.ReplicationPad1d((0, stride))
@@ -45,7 +55,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from helpers.helpers import create_dataset, select_gpu
 from helpers.helper_classes import EarlyStopping
-from .base import ForecastingBackend
+from .base import ForecastingBackend, resolve_local_channel_fusion
 from . import register_backend
 
 logger = logging.getLogger("logger")
@@ -153,6 +163,13 @@ class PatchTST(nn.Module):
 
     Output:
         forecast: [B, horizon, 1]
+
+    The backbone (`encode`) and the forecasting head (`decode`) are separate so
+    that a caller can concatenate the latents of several channels of the *same*
+    agent and let every channel's head consume the concatenation (within-agent
+    channel fusion, mirroring lstm_local). `fusion_channels` sizes the head for
+    that: 1 = independent channel (default, unchanged behaviour), C > 1 = the
+    head consumes C concatenated latents.
     """
 
     def __init__(
@@ -172,6 +189,7 @@ class PatchTST(nn.Module):
         revin: bool = False,
         revin_affine: bool = True,
         subtract_last: bool = False,
+        fusion_channels: int = 1,
     ) -> None:
         super().__init__()
         self.input_dim = int(input_dim)
@@ -183,6 +201,9 @@ class PatchTST(nn.Module):
         self.padding_patch = str(padding_patch)
         self.d_model = int(d_model)
         self.revin_enabled = bool(revin)
+        self.fusion_channels = int(fusion_channels)
+        if self.fusion_channels < 1:
+            raise ValueError(f"fusion_channels must be >= 1, got {fusion_channels}")
 
         self.num_patches, self.pre_pad = _compute_num_patches(
             self.sequence_length, self.patch_len, self.stride, self.padding_patch
@@ -226,7 +247,10 @@ class PatchTST(nn.Module):
         self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=int(n_layers))
 
         self.head_norm = nn.LayerNorm(self.d_model)
-        self.head = nn.Linear(self.num_patches * self.d_model, self.horizon * self.output_dim)
+        self.latent_dim = self.num_patches * self.d_model
+        self.head = nn.Linear(
+            self.latent_dim * self.fusion_channels, self.horizon * self.output_dim
+        )
 
     def _patchify(self, x: torch.Tensor) -> torch.Tensor:
         # x: [B, L, 1] -> [B, N, patch_len]
@@ -239,7 +263,13 @@ class PatchTST(nn.Module):
         # patches: [B, 1, N, patch_len] — squeeze channel dim (input_dim=1)
         return patches.squeeze(1)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def encode(self, x: torch.Tensor) -> torch.Tensor:
+        """Backbone: [B, L, 1] -> flattened latent [B, num_patches*d_model].
+
+        Also records this channel's RevIN statistics (when enabled), which
+        `decode` replays — so even under fusion the denormalization stays
+        per-channel.
+        """
         if x.dim() != 3:
             raise ValueError(f"expected [B, L, C], got {tuple(x.shape)}")
         if x.size(1) != self.sequence_length:
@@ -260,13 +290,48 @@ class PatchTST(nn.Module):
         u = self.dropout(u)
         z = self.encoder(u)  # [B, N, d_model]
         z = self.head_norm(z)
-        flat = z.reshape(z.size(0), -1)  # [B, N*d_model]
-        out = self.head(flat).view(x.size(0), self.horizon, self.output_dim)
+        return z.reshape(z.size(0), -1)  # [B, N*d_model]
 
+    def decode(self, latent: torch.Tensor) -> torch.Tensor:
+        """Head: latent [B, fusion_channels*latent_dim] -> [B, horizon, output_dim]."""
+        expected = self.latent_dim * self.fusion_channels
+        if latent.dim() != 2 or latent.size(-1) != expected:
+            raise ValueError(
+                f"PatchTST.decode expected latent [B, {expected}] "
+                f"(fusion_channels={self.fusion_channels} x latent_dim={self.latent_dim}), "
+                f"got {tuple(latent.shape)}"
+            )
+        out = self.head(latent).view(latent.size(0), self.horizon, self.output_dim)
         if self.revin_enabled:
             out = self.revin_layer(out, "denorm")
-
         return out
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if self.fusion_channels != 1:
+            raise RuntimeError(
+                "PatchTST.forward() is the independent-channel path and requires "
+                f"fusion_channels=1, but this model has fusion_channels="
+                f"{self.fusion_channels}. Use encode()/decode() with the "
+                "concatenated latent instead."
+            )
+        return self.decode(self.encode(x))
+
+
+def _fuse_latents(latents: List[torch.Tensor]) -> torch.Tensor:
+    """Concatenate one agent's per-channel latents along the feature axis.
+
+    Fails loudly on any shape mismatch rather than letting torch broadcast.
+    """
+    if not latents:
+        raise ValueError("cannot fuse an empty list of latents")
+    shapes = [tuple(t.shape) for t in latents]
+    if any(len(s) != 2 for s in shapes):
+        raise ValueError(f"expected 2-D latents [B, latent_dim], got {shapes}")
+    if len({s[0] for s in shapes}) != 1:
+        raise ValueError(f"latents disagree on batch size: {shapes}")
+    if len({s[1] for s in shapes}) != 1:
+        raise ValueError(f"latents disagree on latent_dim: {shapes}")
+    return torch.cat(latents, dim=-1)
 
 
 # ---------------------------------------------------------------------------
@@ -288,6 +353,7 @@ class LocalPatchTSTForecastingModel:
     scaler: StandardScaler
     device: torch.device
     horizon: int = 1
+    channel_fusion: bool = False
 
     def predict(self, data: Sequence[np.ndarray]) -> List[float]:
         if len(data) != len(self.models):
@@ -300,13 +366,19 @@ class LocalPatchTSTForecastingModel:
 
         predictions: List[float] = []
         with torch.no_grad():
+            inputs: List[torch.Tensor] = []
             for retailer_idx, model in enumerate(self.models):
-                model = model.to(self.device)
+                model.to(self.device)
                 model.eval()
                 seq_len = int(model.sequence_length)
                 x = scaled[-seq_len:, retailer_idx].reshape(1, seq_len, 1)
-                input_tensor = torch.tensor(x, dtype=torch.float32, device=self.device)
-                pred_scaled = model(input_tensor)[:, -1, 0].item()
+                inputs.append(torch.tensor(x, dtype=torch.float32, device=self.device))
+
+            outputs = _forward_channels(
+                self.models, inputs, len(self.models), self.channel_fusion
+            )
+            for retailer_idx, out in enumerate(outputs):
+                pred_scaled = out[:, -1, 0].item()
                 pred = pred_scaled * self.scaler.scale_[retailer_idx] + self.scaler.mean_[retailer_idx]
                 predictions.append(float(pred))
         return predictions
@@ -400,6 +472,30 @@ def _build_agent_dataframe(agent) -> pd.DataFrame:
     return pd.DataFrame(data).transpose()
 
 
+def _forward_channels(
+    models: nn.ModuleList,
+    features: List[torch.Tensor],
+    num_channels: int,
+    channel_fusion: bool,
+) -> List[torch.Tensor]:
+    """One forward pass over all channels of a single agent.
+
+    channel_fusion=True mirrors lstm_local: run every channel's backbone, then
+    concatenate the latents and let every channel's head consume the fused
+    vector. Only this agent's own channels are involved.
+    """
+    if len(features) != num_channels or len(models) != num_channels:
+        raise ValueError(
+            f"expected {num_channels} channels, got {len(features)} feature tensors "
+            f"and {len(models)} models"
+        )
+    if not channel_fusion:
+        return [models[r](features[r]) for r in range(num_channels)]
+
+    latent = _fuse_latents([models[r].encode(features[r]) for r in range(num_channels)])
+    return [models[r].decode(latent) for r in range(num_channels)]
+
+
 def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], device: torch.device) -> List[float]:
     pt_cfg = cfg.get("patchtst", {})
 
@@ -432,9 +528,14 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
     onecycle_div_factor = float(pt_cfg.get("onecycle_div_factor", 25.0))
     onecycle_final_div_factor = float(pt_cfg.get("onecycle_final_div_factor", 1e4))
     onecycle_anneal_strategy = str(pt_cfg.get("onecycle_anneal_strategy", "cos"))
+    channel_fusion = resolve_local_channel_fusion(cfg, "patchtst")
+    fusion_channels = int(agent.num_retailer) if channel_fusion else 1
     loss_fn = nn.L1Loss()
 
-    logger.info("Training local PatchTST for %s with %d retailer channels", agent_label, agent.num_retailer)
+    logger.info(
+        "Training local PatchTST for %s with %d retailer channels (local_channel_fusion=%s)",
+        agent_label, agent.num_retailer, channel_fusion,
+    )
 
     df = _build_agent_dataframe(agent)
     if len(df) < train_size + val_size:
@@ -472,6 +573,7 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
             revin=revin,
             revin_affine=revin_affine,
             subtract_last=subtract_last,
+            fusion_channels=fusion_channels,
         ).to(device)
         models.append(model)
         optimizers.append(torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay))
@@ -545,7 +647,7 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
                 features.append(batch[0].to(device).float())
                 targets.append(_last_horizon_target(batch[1].to(device).float(), horizon))
 
-            outputs = [models[r](features[r]) for r in range(agent.num_retailer)]
+            outputs = _forward_channels(models, features, agent.num_retailer, channel_fusion)
 
             if loss_cal == "individual":
                 losses = [loss_fn(outputs[r], targets[r]) for r in range(agent.num_retailer)]
@@ -574,15 +676,20 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
 
         _set_train(models, False)
         with torch.no_grad():
+            val_features: List[torch.Tensor] = []
+            val_targets: List[torch.Tensor] = []
+            for retailer_idx in range(agent.num_retailer):
+                x_val, y_val = val_data[retailer_idx]
+                val_features.append(x_val.to(device).float())
+                val_targets.append(_last_horizon_target(y_val.to(device).float(), horizon))
+
+            val_preds = _forward_channels(models, val_features, agent.num_retailer, channel_fusion)
+
             outputs_rescaled: List[torch.Tensor] = []
             targets_rescaled: List[torch.Tensor] = []
             for retailer_idx in range(agent.num_retailer):
-                x_val, y_val = val_data[retailer_idx]
-                x_val = x_val.to(device).float()
-                y_val = _last_horizon_target(y_val.to(device).float(), horizon)
-                pred = models[retailer_idx](x_val)
-                outputs_rescaled.append(_inverse_scale_tensor(pred, scaler, retailer_idx))
-                targets_rescaled.append(_inverse_scale_tensor(y_val, scaler, retailer_idx))
+                outputs_rescaled.append(_inverse_scale_tensor(val_preds[retailer_idx], scaler, retailer_idx))
+                targets_rescaled.append(_inverse_scale_tensor(val_targets[retailer_idx], scaler, retailer_idx))
 
             outputs_agent = torch.cat(outputs_rescaled, dim=2)
             targets_agent = torch.cat(targets_rescaled, dim=2)
@@ -624,6 +731,7 @@ def _train_one_agent(agent, agent_label: str, simulation, cfg: Dict[str, Any], d
             scaler=scaler,
             device=device,
             horizon=horizon,
+            channel_fusion=channel_fusion,
         )
     )
 
