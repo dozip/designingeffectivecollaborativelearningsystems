@@ -8,6 +8,9 @@
 Reporting/
 /isolated_Experiments
 *.pth
+*.err
+*.out
+logs/
 
 *.csv
 .vscode/
