@@ -30,7 +30,7 @@ from collections import deque
 # exactly one device as cuda:0.
 
 GPU_ALLOCATION_MODE = "fixed"
-FIXED_GPU_IDS: list[str] = ["0", "1", "2"]
+FIXED_GPU_IDS: list[str] = ["0", "1", "2", "3", "4", "5", "6", "7"]
 GPU_SLOTS: list[dict] = []
 
 import numpy as np
