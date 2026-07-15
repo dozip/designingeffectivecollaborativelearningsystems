@@ -1763,8 +1763,56 @@ def run_single_experiment(
     from ML_Backends import build_backend
     from ML_Backends.ma import NoOpBackend
 
-    if gpu_id is not None and torch.cuda.is_available():
+    print(
+        f"[GPU CHECK] "
+        f"pid={os.getpid()} | "
+        f"assigned_gpu_id={gpu_id} | "
+        f"CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES')} | "
+        f"torch_cuda_available={torch.cuda.is_available()} | "
+        f"torch_device_count={torch.cuda.device_count()}",
+        flush=True,
+    )
+
+    if gpu_id is not None:
+        if not torch.cuda.is_available():
+            raise RuntimeError(
+                "Scheduler assigned a GPU, but CUDA is unavailable inside "
+                f"the child process. PID={os.getpid()}, "
+                f"CUDA_VISIBLE_DEVICES="
+                f"{os.environ.get('CUDA_VISIBLE_DEVICES')!r}"
+            )
+
+        if torch.cuda.device_count() != 1:
+            raise RuntimeError(
+                "GPU child should see exactly one CUDA device, "
+                f"but sees {torch.cuda.device_count()}. "
+                f"CUDA_VISIBLE_DEVICES="
+                f"{os.environ.get('CUDA_VISIBLE_DEVICES')!r}"
+            )
+
         torch.cuda.set_device(0)
+
+        print(
+            f"[GPU CHECK OK] "
+            f"pid={os.getpid()} | "
+            f"logical_device=cuda:0 | "
+            f"device_name={torch.cuda.get_device_name(0)}",
+            flush=True,
+        )
+
+        # Create the CUDA context immediately. This makes the worker visible in
+        # nvidia-smi even while the simulation is still in its CPU warmup phase.
+        cuda_probe = torch.empty(1, device="cuda:0")
+        torch.cuda.synchronize()
+
+        print(
+            f"[GPU PROBE OK] "
+            f"pid={os.getpid()} | "
+            f"allocated={torch.cuda.memory_allocated(0)} bytes",
+            flush=True,
+        )
+
+        del cuda_probe
 
     seed = 42 + experiment_id * 100_000 + run_id
 
@@ -2234,6 +2282,23 @@ def run_load_balanced(
             started_any = False
 
             for _ in range(len(pending_jobs)):
+                # Collect processes that finished while this start batch is
+                # still being processed. This immediately releases process and
+                # GPU slots instead of waiting for the next outer-loop cycle.
+                new_failed_jobs, new_finished_jobs, finished_event = (
+                    collect_finished_processes(
+                        active_processes=active_processes,
+                        active_gpu_jobs=active_gpu_jobs,
+                    )
+                )
+
+                failed_jobs.extend(new_failed_jobs)
+                done_jobs += len(new_finished_jobs) + len(new_failed_jobs)
+
+                if finished_event:
+                    last_event = finished_event
+                    record_scheduler_event(last_event)
+
                 if len(active_processes) >= max_parallel_processes:
                     break
 
@@ -2306,7 +2371,7 @@ def run_load_balanced(
                     last_event=last_event,
                 )
 
-                time.sleep(3)
+                time.sleep(1)
 
                 cpu_usage = psutil.cpu_percent(interval=0.1)
                 ram_usage = psutil.virtual_memory().percent
