@@ -2800,10 +2800,10 @@ def parse_cli_args(argv=None):
     parser.add_argument(
         "--fixed-gpu-ids",
         type=str,
-        default="0,1,2",
+        default="0,1,2,3,4,5,6,7",
         help=(
             "Comma-separated GPU indexes/UUIDs for fixed or auto-local mode. "
-            "Default: 0,1,2."
+            "Default: 0,1,2,3,4,5,6,7."
         ),
     )
 
