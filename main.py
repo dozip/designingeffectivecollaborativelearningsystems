@@ -2198,6 +2198,7 @@ FULL_CONFIG_FILENAME = "real_world_usda_4datasets_lt123.yaml"
 FULL_CONFIG_FILENAME = "real_world_4datasets_cleaned_659_config.yaml"
 FULL_CONFIG_FILENAME = "real_world_usda_config_dynamic_supplier_allocation.yaml"
 FULL_CONFIG_FILENAME = "combined_experiment_config_REALWORLD_5RUNS.yaml"
+FULL_CONFIG_FILENAME = "combined_experiment_config.yaml"
 # FULL_CONFIG_FILENAME = "all_experiments_corrected.yaml"
 
 # None means:
