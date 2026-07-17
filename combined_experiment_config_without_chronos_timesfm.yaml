@@ -6,8 +6,8 @@
 # - Chronos and TimesFM experiments removed
 # =============================================================================
 sim:
-  simulation_runs: 5
-  run_start_id: 5
+  simulation_runs: 1
+  run_start_id: 1
   convergence_time: 2500
   simulation_time: 2500
   training_time: 1000
@@ -40,8 +40,8 @@ market:
     - 0.1 # R2, P2
     - 0.1 # R2, P3
   factor_model:
-    lam: 1
-    tau: 2
+    lam: 0.75
+    tau: 0
     idio_noise_scale: 1.0
     shock_prob: 0.0
     shock_mag: 0.0
