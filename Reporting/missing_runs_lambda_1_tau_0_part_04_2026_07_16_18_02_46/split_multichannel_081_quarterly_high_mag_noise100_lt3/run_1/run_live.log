@@ -1,0 +1,8 @@
+==============================================================================================================
+[2026-07-16T18:17:08] START experiment=split_multichannel_081_quarterly_high_mag_noise100_lt3 run_1 pid=3650374 gpu=6 log=/home/zipperli/projects/designingeffectivecollaborativelearningsystems/Reporting/missing_runs_lambda_1_tau_0_part_04_2026_07_16_18_02_46/split_multichannel_081_quarterly_high_mag_noise100_lt3/run_1/run_live.log
+==============================================================================================================
+/home/zipperli/projects/designingeffectivecollaborativelearningsystems/helpers/helpers.py:801: UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow. Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor. (Triggered internally at /pytorch/torch/csrc/utils/tensor_new.cpp:253.)
+  return torch.tensor(X, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)
+==============================================================================================================
+[2026-07-16T18:20:11] END experiment=split_multichannel_081_quarterly_high_mag_noise100_lt3 run_1 pid=3650374 status=finished
+==============================================================================================================

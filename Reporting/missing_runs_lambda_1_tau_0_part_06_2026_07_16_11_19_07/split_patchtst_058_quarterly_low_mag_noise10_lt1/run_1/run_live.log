@@ -1,0 +1,10 @@
+==============================================================================================================
+[2026-07-16T16:45:59] START experiment=split_patchtst_058_quarterly_low_mag_noise10_lt1 run_1 pid=3544691 gpu=2 log=/home/zipperli/projects/designingeffectivecollaborativelearningsystems/Reporting/missing_runs_lambda_1_tau_0_part_06_2026_07_16_11_19_07/split_patchtst_058_quarterly_low_mag_noise10_lt1/run_1/run_live.log
+==============================================================================================================
+/home/zipperli/projects/designingeffectivecollaborativelearningsystems/ML_Backends/patchtst_split.py:210: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=int(n_layers))
+/home/zipperli/projects/designingeffectivecollaborativelearningsystems/helpers/helpers.py:801: UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow. Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor. (Triggered internally at /pytorch/torch/csrc/utils/tensor_new.cpp:253.)
+  return torch.tensor(X, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)
+==============================================================================================================
+[2026-07-16T16:47:41] END experiment=split_patchtst_058_quarterly_low_mag_noise10_lt1 run_1 pid=3544691 status=finished
+==============================================================================================================
