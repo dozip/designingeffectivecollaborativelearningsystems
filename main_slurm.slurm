@@ -1,11 +1,11 @@
 #!/bin/bash -l
 
-#SBATCH --job-name=zero_shot_runs_5_to_9_lambda_1_tau_2
-#SBATCH --partition=v100
-#SBATCH --gres=gpu:v100:4
+#SBATCH --job-name=without_zero_shot_multi_product_runs_5_part_2_lambda_075_tau_0
+#SBATCH --partition=rtx3080
+#SBATCH --gres=gpu:rtx3080:8
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=32
+#SBATCH --cpus-per-task=64
 #SBATCH --time=24:00:00
 #SBATCH --output=logs/tsfm-%j.out
 #SBATCH --error=logs/tsfm-%j.err
@@ -21,7 +21,7 @@ module load python
 PROJECT="/home/hpc/btr0/btr0106h/projects/designingeffectivecollaborativelearningsystems"
 ENV_PATH="$WORK/venvs/numpy2-flax-test"
 
-EXPECTED_GPUS=4
+EXPECTED_GPUS=8
 THREADS_PER_GPU=8
 
 cd "$PROJECT"
@@ -43,19 +43,19 @@ export https_proxy="http://proxy.nhr.fau.de:80"
 export HTTP_PROXY="$http_proxy"
 export HTTPS_PROXY="$https_proxy"
 
-# TimesFM über Flax/JAX auf CUDA ausführen.
+# JAX auf den zugewiesenen CUDA-GPUs ausführen.
 export JAX_PLATFORMS=cuda
 
 # Verhindert, dass jeder JAX-Prozess sofort fast den gesamten
-# GPU-Speicher der ihm zugewiesenen V100 reserviert.
+# GPU-Speicher der ihm zugewiesenen RTX 3080 reserviert.
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 
 # Kann Speicherfragmentierung bei mehreren JAX-Prozessen reduzieren.
 export TF_GPU_ALLOCATOR=cuda_malloc_async
 
-# Es laufen bis zu vier Experimentprozesse gleichzeitig:
-# ein Prozess pro V100. Daher erhält jeder Prozess rechnerisch
-# acht der insgesamt 32 zugewiesenen physischen CPU-Kerne.
+# Es laufen bis zu acht Experimentprozesse gleichzeitig:
+# ein Prozess pro RTX 3080. Daher erhält jeder Prozess rechnerisch
+# acht der insgesamt 64 zugewiesenen physischen CPU-Kerne.
 export OMP_NUM_THREADS="$THREADS_PER_GPU"
 export MKL_NUM_THREADS="$THREADS_PER_GPU"
 export OPENBLAS_NUM_THREADS="$THREADS_PER_GPU"
@@ -79,7 +79,7 @@ echo "============================================================"
 
 nvidia-smi
 
-# Prüfen, ob JAX wirklich alle vier zugewiesenen V100-GPUs sieht.
+# Prüfen, ob JAX wirklich alle acht zugewiesenen RTX-3080-GPUs sieht.
 EXPECTED_GPUS="$EXPECTED_GPUS" "$ENV_PATH/bin/python" -c '
 import os
 import jax
@@ -105,4 +105,4 @@ if any(device.platform != "gpu" for device in devices):
 srun --ntasks=1 \
     "$ENV_PATH/bin/python" -u main_slurm.py \
     --gpu-allocation slurm \
-    --name zero_shot_all_products_per_manufacturer_runs_0_to_5_lambda_1_tau_2
+    --name without_zero_shot_multi_product_runs_5_part_2_lambda_075_tau_0
