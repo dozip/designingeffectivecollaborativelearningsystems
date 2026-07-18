@@ -1,0 +1,451 @@
+[2026-07-18T07:39:22] Scheduler started
+[2026-07-18T07:39:23] Started None | no_training_ma_001_yearly_low_mag_noise0_lt1 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=1 | PID 2068399 | GPU None
+[2026-07-18T07:39:26] Started None | no_training_ma_006_yearly_low_mag_noise10_lt3 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=3 | PID 2068449 | GPU None
+[2026-07-18T07:39:30] Started None | no_training_ma_008_yearly_low_mag_noise100_lt2 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=2 | PID 2068549 | GPU None
+[2026-07-18T07:39:33] Started None | no_training_ma_012_yearly_medium_mag_noise0_lt3 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=3 | PID 2068627 | GPU None
+[2026-07-18T07:39:37] Started None | no_training_ma_014_yearly_medium_mag_noise10_lt2 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=2 | PID 2068705 | GPU None
+[2026-07-18T07:39:40] Started None | no_training_ma_016_yearly_medium_mag_noise100_lt1 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=1 | PID 2068776 | GPU None
+[2026-07-18T07:39:43] Started None | no_training_ma_020_yearly_high_mag_noise0_lt2 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=2 | PID 2068898 | GPU None
+[2026-07-18T07:39:46] Started None | no_training_ma_022_yearly_high_mag_noise10_lt1 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=1 | PID 2068903 | GPU None
+[2026-07-18T07:39:50] Started None | no_training_ma_027_yearly_high_mag_noise100_lt3 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=3 | PID 2068907 | GPU None
+[2026-07-18T07:39:53] Started None | no_training_ma_030_half_yearly_low_mag_noise0_lt3 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=3 | PID 2068911 | GPU None
+[2026-07-18T07:39:56] Started None | no_training_ma_032_half_yearly_low_mag_noise10_lt2 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=2 | PID 2068916 | GPU None
+[2026-07-18T07:39:59] Started None | no_training_ma_034_half_yearly_low_mag_noise100_lt1 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=1 | PID 2068949 | GPU None
+[2026-07-18T07:40:03] Started None | no_training_ma_038_half_yearly_medium_mag_noise0_lt2 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=2 | PID 2069023 | GPU None
+[2026-07-18T07:40:06] Started None | no_training_ma_040_half_yearly_medium_mag_noise10_lt1 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=1 | PID 2069031 | GPU None
+[2026-07-18T07:40:09] Started None | no_training_ma_045_half_yearly_medium_mag_noise100_lt3 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=3 | PID 2069213 | GPU None
+[2026-07-18T07:40:12] Started None | no_training_ma_046_half_yearly_high_mag_noise0_lt1 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=1 | PID 2069221 | GPU None
+[2026-07-18T07:40:16] Started None | no_training_ma_051_half_yearly_high_mag_noise10_lt3 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=3 | PID 2069226 | GPU None
+[2026-07-18T07:40:19] Started None | no_training_ma_053_half_yearly_high_mag_noise100_lt2 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=2 | PID 2069231 | GPU None
+[2026-07-18T07:40:22] Started None | no_training_ma_056_quarterly_low_mag_noise0_lt2 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=2 | PID 2069235 | GPU None
+[2026-07-18T07:40:25] Started None | no_training_ma_058_quarterly_low_mag_noise10_lt1 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=1 | PID 2069239 | GPU None
+[2026-07-18T07:40:29] Started None | no_training_ma_063_quarterly_low_mag_noise100_lt3 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=3 | PID 2069243 | GPU None
+[2026-07-18T07:40:32] Started None | no_training_ma_064_quarterly_medium_mag_noise0_lt1 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=1 | PID 2069255 | GPU None
+[2026-07-18T07:40:35] Started None | no_training_ma_069_quarterly_medium_mag_noise10_lt3 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=3 | PID 2069259 | GPU None
+[2026-07-18T07:40:38] Started None | no_training_ma_071_quarterly_medium_mag_noise100_lt2 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=2 | PID 2069263 | GPU None
+[2026-07-18T07:40:42] Started None | no_training_ma_075_quarterly_high_mag_noise0_lt3 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=3 | PID 2069307 | GPU None
+[2026-07-18T07:40:45] Started None | no_training_ma_077_quarterly_high_mag_noise10_lt2 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=2 | PID 2069470 | GPU None
+[2026-07-18T07:40:48] Started None | no_training_ma_079_quarterly_high_mag_noise100_lt1 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=1 | PID 2069563 | GPU None
+[2026-07-18T07:40:51] Started None | no_training_ma_082_half_quarterly_low_mag_noise0_lt1 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=1 | PID 2069634 | GPU None
+[2026-07-18T07:40:55] Started None | no_training_ma_087_half_quarterly_low_mag_noise10_lt3 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=3 | PID 2069708 | GPU None
+[2026-07-18T07:40:58] Started None | no_training_ma_089_half_quarterly_low_mag_noise100_lt2 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=2 | PID 2069731 | GPU None
+[2026-07-18T07:41:01] Started None | no_training_ma_093_half_quarterly_medium_mag_noise0_lt3 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=3 | PID 2069736 | GPU None
+[2026-07-18T07:41:04] Started None | no_training_ma_095_half_quarterly_medium_mag_noise10_lt2 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=2 | PID 2069772 | GPU None
+[2026-07-18T07:41:08] Started None | no_training_ma_097_half_quarterly_medium_mag_noise100_lt1 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=1 | PID 2069802 | GPU None
+[2026-07-18T07:41:11] Started None | no_training_ma_101_half_quarterly_high_mag_noise0_lt2 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=2 | PID 2069988 | GPU None
+[2026-07-18T07:41:14] Started None | no_training_ma_103_half_quarterly_high_mag_noise10_lt1 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=1 | PID 2069992 | GPU None
+[2026-07-18T07:41:17] Started None | no_training_ma_108_half_quarterly_high_mag_noise100_lt3 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=3 | PID 2069997 | GPU None
+[2026-07-18T07:41:21] Started local_multichannel | local_multichannel_001_yearly_low_mag_noise0_lt1 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=1 | PID 2070004 | GPU 0
+[2026-07-18T07:41:25] Started local_multichannel | local_multichannel_006_yearly_low_mag_noise10_lt3 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=3 | PID 2070011 | GPU 1
+[2026-07-18T07:41:28] Started local_multichannel | local_multichannel_008_yearly_low_mag_noise100_lt2 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=2 | PID 2070022 | GPU 2
+[2026-07-18T07:41:32] Started local_multichannel | local_multichannel_012_yearly_medium_mag_noise0_lt3 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=3 | PID 2070033 | GPU 3
+[2026-07-18T07:41:35] Started local_multichannel | local_multichannel_014_yearly_medium_mag_noise10_lt2 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=2 | PID 2070052 | GPU 4
+[2026-07-18T07:41:38] Started local_multichannel | local_multichannel_016_yearly_medium_mag_noise100_lt1 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=1 | PID 2070063 | GPU 5
+[2026-07-18T07:41:42] Started local_multichannel | local_multichannel_020_yearly_high_mag_noise0_lt2 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=2 | PID 2070076 | GPU 6
+[2026-07-18T07:41:45] Started local_multichannel | local_multichannel_022_yearly_high_mag_noise10_lt1 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=1 | PID 2070087 | GPU 7
+[2026-07-18T07:41:48] Started local_multichannel | local_multichannel_027_yearly_high_mag_noise100_lt3 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=3 | PID 2070212 | GPU 7
+[2026-07-18T07:41:52] Started local_multichannel | local_multichannel_030_half_yearly_low_mag_noise0_lt3 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=3 | PID 2070220 | GPU 0
+[2026-07-18T07:41:55] Started local_multichannel | local_multichannel_032_half_yearly_low_mag_noise10_lt2 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=2 | PID 2070228 | GPU 1
+[2026-07-18T07:41:58] Started local_multichannel | local_multichannel_034_half_yearly_low_mag_noise100_lt1 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=1 | PID 2070287 | GPU 2
+[2026-07-18T07:42:02] Started local_multichannel | local_multichannel_038_half_yearly_medium_mag_noise0_lt2 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=2 | PID 2070359 | GPU 4
+[2026-07-18T07:42:05] Started local_multichannel | local_multichannel_040_half_yearly_medium_mag_noise10_lt1 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=1 | PID 2070442 | GPU 3
+[2026-07-18T07:42:08] Finished None | no_training_ma_108_half_quarterly_high_mag_noise100_lt3 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=3
+[2026-07-18T07:42:09] Started local_multichannel | local_multichannel_045_half_yearly_medium_mag_noise100_lt3 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=3 | PID 2070537 | GPU 5
+[2026-07-18T07:42:12] Started local_multichannel | local_multichannel_046_half_yearly_high_mag_noise0_lt1 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=1 | PID 2070806 | GPU 6
+[2026-07-18T07:42:15] Started local_multichannel | local_multichannel_051_half_yearly_high_mag_noise10_lt3 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=3 | PID 2070869 | GPU 6
+[2026-07-18T07:42:19] Started local_multichannel | local_multichannel_053_half_yearly_high_mag_noise100_lt2 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=2 | PID 2070878 | GPU 4
+[2026-07-18T07:42:22] Started local_multichannel | local_multichannel_056_quarterly_low_mag_noise0_lt2 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=2 | PID 2070886 | GPU 7
+[2026-07-18T07:42:25] Started local_multichannel | local_multichannel_058_quarterly_low_mag_noise10_lt1 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=1 | PID 2070894 | GPU 1
+[2026-07-18T07:42:29] Started local_multichannel | local_multichannel_063_quarterly_low_mag_noise100_lt3 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=3 | PID 2070902 | GPU 5
+[2026-07-18T07:42:32] Started local_multichannel | local_multichannel_064_quarterly_medium_mag_noise0_lt1 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=1 | PID 2070918 | GPU 2
+[2026-07-18T07:42:35] Started local_multichannel | local_multichannel_069_quarterly_medium_mag_noise10_lt3 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=3 | PID 2070926 | GPU 3
+[2026-07-18T07:42:39] Started local_multichannel | local_multichannel_071_quarterly_medium_mag_noise100_lt2 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=2 | PID 2070934 | GPU 0
+[2026-07-18T07:42:42] Started local_multichannel | local_multichannel_075_quarterly_high_mag_noise0_lt3 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=3 | PID 2070944 | GPU 0
+[2026-07-18T07:42:48] Started split_multichannel | split_multichannel_034_half_yearly_low_mag_noise100_lt1 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=1 | PID 2070997 | GPU 4
+[2026-07-18T07:42:59] Started split_timemixer | split_timemixer_038_half_yearly_medium_mag_noise0_lt2 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=2 | PID 2071261 | GPU 7
+[2026-07-18T07:43:10] Started split_patchtst | split_patchtst_020_yearly_high_mag_noise0_lt2 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=2 | PID 2071583 | GPU 2
+[2026-07-18T07:43:21] Started split_multichannel | split_multichannel_077_quarterly_high_mag_noise10_lt2 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=2 | PID 2071918 | GPU 5
+[2026-07-18T07:43:38] Started split_patchtst | split_patchtst_022_yearly_high_mag_noise10_lt1 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=1 | PID 2072371 | GPU 1
+[2026-07-18T07:43:55] Started split_timemixer | split_timemixer_014_yearly_medium_mag_noise10_lt2 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=2 | PID 2072718 | GPU 4
+[2026-07-18T07:44:10] Finished split_multichannel | split_multichannel_034_half_yearly_low_mag_noise100_lt1 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=1
+[2026-07-18T07:44:27] Started local_patchtst | local_patchtst_082_half_quarterly_low_mag_noise0_lt1 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=1 | PID 2073457 | GPU 3
+[2026-07-18T07:44:30] Started local_patchtst | local_patchtst_087_half_quarterly_low_mag_noise10_lt3 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=3 | PID 2073464 | GPU 3
+[2026-07-18T07:44:38] Started split_patchtst | split_patchtst_093_half_quarterly_medium_mag_noise0_lt3 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=3 | PID 2073674 | GPU 6
+[2026-07-18T07:44:42] Finished local_multichannel | local_multichannel_016_yearly_medium_mag_noise100_lt1 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=1
+[2026-07-18T07:44:46] Started split_multichannel | split_multichannel_063_quarterly_low_mag_noise100_lt3 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=3 | PID 2073910 | GPU 0
+[2026-07-18T07:44:49] Started split_multichannel | split_multichannel_064_quarterly_medium_mag_noise0_lt1 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=1 | PID 2073970 | GPU 0
+[2026-07-18T07:44:55] Started local_timemixer | local_timemixer_032_half_yearly_low_mag_noise10_lt2 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=2 | PID 2074127 | GPU 5
+[2026-07-18T07:45:04] Started split_timemixer | split_timemixer_071_quarterly_medium_mag_noise100_lt2 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=2 | PID 2074257 | GPU 2
+[2026-07-18T07:45:13] Started split_patchtst | split_patchtst_012_yearly_medium_mag_noise0_lt3 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=3 | PID 2074549 | GPU 1
+[2026-07-18T07:45:20] Finished split_patchtst | split_patchtst_022_yearly_high_mag_noise10_lt1 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=1
+[2026-07-18T07:45:41] Waiting for available CPU/GPU capacity. waiting=177, running=28
+[2026-07-18T07:45:42] Finished local_multichannel | local_multichannel_053_half_yearly_high_mag_noise100_lt2 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=2
+[2026-07-18T07:45:54] Started split_timemixer | split_timemixer_069_quarterly_medium_mag_noise10_lt3 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=3 | PID 2075338 | GPU 6
+[2026-07-18T07:45:57] Started split_timemixer | split_timemixer_075_quarterly_high_mag_noise0_lt3 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=3 | PID 2075485 | GPU 6
+[2026-07-18T07:46:09] Finished local_multichannel | local_multichannel_056_quarterly_low_mag_noise0_lt2 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=2
+[2026-07-18T07:46:10] Started local_multichannel | local_multichannel_093_half_quarterly_medium_mag_noise0_lt3 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=3 | PID 2075875 | GPU 4
+[2026-07-18T07:46:14] Started local_multichannel | local_multichannel_095_half_quarterly_medium_mag_noise10_lt2 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=2 | PID 2076060 | GPU 1
+[2026-07-18T07:46:17] Started local_multichannel | local_multichannel_097_half_quarterly_medium_mag_noise100_lt1 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=1 | PID 2076069 | GPU 1
+[2026-07-18T07:46:20] Started local_multichannel | local_multichannel_101_half_quarterly_high_mag_noise0_lt2 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=2 | PID 2076078 | GPU 3
+[2026-07-18T07:46:24] Started local_multichannel | local_multichannel_103_half_quarterly_high_mag_noise10_lt1 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=1 | PID 2076089 | GPU 0
+[2026-07-18T07:46:27] Started local_multichannel | local_multichannel_108_half_quarterly_high_mag_noise100_lt3 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=3 | PID 2076131 | GPU 3
+[2026-07-18T07:46:32] Started split_multichannel | split_multichannel_051_half_yearly_high_mag_noise10_lt3 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=3 | PID 2076196 | GPU 1
+[2026-07-18T07:46:43] Started split_timemixer | split_timemixer_056_quarterly_low_mag_noise0_lt2 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=2 | PID 2076341 | GPU 5
+[2026-07-18T07:46:56] Finished split_patchtst | split_patchtst_012_yearly_medium_mag_noise0_lt3 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=3
+[2026-07-18T07:46:56] Started local_multichannel | local_multichannel_077_quarterly_high_mag_noise10_lt2 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=2 | PID 2076511 | GPU 3
+[2026-07-18T07:47:00] Started local_multichannel | local_multichannel_079_quarterly_high_mag_noise100_lt1 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=1 | PID 2076613 | GPU 3
+[2026-07-18T07:47:08] Started local_timemixer | local_timemixer_038_half_yearly_medium_mag_noise0_lt2 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=2 | PID 2076776 | GPU 2
+[2026-07-18T07:47:26] Started split_multichannel | split_multichannel_027_yearly_high_mag_noise100_lt3 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=3 | PID 2077532 | GPU 7
+[2026-07-18T07:47:33] Started local_timemixer | local_timemixer_022_yearly_high_mag_noise10_lt1 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=1 | PID 2077661 | GPU 1
+[2026-07-18T07:47:49] Started split_patchtst | split_patchtst_075_quarterly_high_mag_noise0_lt3 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=3 | PID 2077896 | GPU 4
+[2026-07-18T07:48:01] Started split_timemixer | split_timemixer_006_yearly_low_mag_noise10_lt3 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=3 | PID 2078146 | GPU 0
+[2026-07-18T07:48:05] Started split_timemixer | split_timemixer_008_yearly_low_mag_noise100_lt2 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=2 | PID 2078179 | GPU 0
+[2026-07-18T07:48:18] Finished local_multichannel | local_multichannel_103_half_quarterly_high_mag_noise10_lt1 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=1
+[2026-07-18T07:48:37] Waiting for available CPU/GPU capacity. waiting=159, running=22
+[2026-07-18T07:48:38] Finished split_multichannel | split_multichannel_064_quarterly_medium_mag_noise0_lt1 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=1
+[2026-07-18T07:48:56] Waiting for available CPU/GPU capacity. waiting=159, running=21
+[2026-07-18T07:48:58] Started split_multichannel | split_multichannel_001_yearly_low_mag_noise0_lt1 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=1 | PID 2079608 | GPU 7
+[2026-07-18T07:49:13] Started local_patchtst | local_patchtst_022_yearly_high_mag_noise10_lt1 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=1 | PID 2079929 | GPU 3
+[2026-07-18T07:49:22] Finished local_multichannel | local_multichannel_077_quarterly_high_mag_noise10_lt2 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=2
+[2026-07-18T07:49:24] Started split_multichannel | split_multichannel_040_half_yearly_medium_mag_noise10_lt1 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=1 | PID 2080259 | GPU 7
+[2026-07-18T07:49:28] Started split_multichannel | split_multichannel_045_half_yearly_medium_mag_noise100_lt3 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=3 | PID 2080266 | GPU 7
+[2026-07-18T07:49:43] Started local_patchtst | local_patchtst_095_half_quarterly_medium_mag_noise10_lt2 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=2 | PID 2080583 | GPU 3
+[2026-07-18T07:49:50] Finished split_timemixer | split_timemixer_038_half_yearly_medium_mag_noise0_lt2 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=2
+[2026-07-18T07:50:09] Waiting for available CPU/GPU capacity. waiting=154, running=23
+[2026-07-18T07:50:10] Finished local_multichannel | local_multichannel_108_half_quarterly_high_mag_noise100_lt3 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=3
+[2026-07-18T07:50:14] Started local_timemixer | local_timemixer_014_yearly_medium_mag_noise10_lt2 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=2 | PID 2081570 | GPU 3
+[2026-07-18T07:50:19] Started local_timemixer | local_timemixer_063_quarterly_low_mag_noise100_lt3 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=3 | PID 2081697 | GPU 7
+[2026-07-18T07:50:34] Started split_patchtst | split_patchtst_108_half_quarterly_high_mag_noise100_lt3 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=3 | PID 2081924 | GPU 4
+[2026-07-18T07:50:38] Finished split_multichannel | split_multichannel_040_half_yearly_medium_mag_noise10_lt1 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=1
+[2026-07-18T07:50:38] Started local_multichannel | local_multichannel_082_half_quarterly_low_mag_noise0_lt1 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=1 | PID 2081933 | GPU 4
+[2026-07-18T07:50:53] Started local_patchtst | local_patchtst_040_half_yearly_medium_mag_noise10_lt1 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=1 | PID 2082199 | GPU 1
+[2026-07-18T07:51:02] Finished split_patchtst | split_patchtst_075_quarterly_high_mag_noise0_lt3 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=3
+[2026-07-18T07:51:19] Waiting for available CPU/GPU capacity. waiting=149, running=19
+[2026-07-18T07:51:20] Finished local_patchtst | local_patchtst_022_yearly_high_mag_noise10_lt1 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=1
+[2026-07-18T07:51:37] Waiting for available CPU/GPU capacity. waiting=149, running=17
+[2026-07-18T07:51:38] Finished local_timemixer | local_timemixer_032_half_yearly_low_mag_noise10_lt2 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=2
+[2026-07-18T07:51:44] Started local_timemixer | local_timemixer_082_half_quarterly_low_mag_noise0_lt1 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=1 | PID 2083652 | GPU 3
+[2026-07-18T07:51:49] Started split_timemixer | split_timemixer_012_yearly_medium_mag_noise0_lt3 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=3 | PID 2083716 | GPU 4
+[2026-07-18T07:51:52] Started split_timemixer | split_timemixer_016_yearly_medium_mag_noise100_lt1 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=1 | PID 2083740 | GPU 4
+[2026-07-18T07:51:59] Started local_patchtst | local_patchtst_020_yearly_high_mag_noise0_lt2 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=2 | PID 2083811 | GPU 5
+[2026-07-18T07:52:05] Started split_patchtst | split_patchtst_001_yearly_low_mag_noise0_lt1 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=1 | PID 2083870 | GPU 7
+[2026-07-18T07:52:11] Finished split_patchtst | split_patchtst_108_half_quarterly_high_mag_noise100_lt3 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=3
+[2026-07-18T07:52:13] Started split_multichannel | split_multichannel_056_quarterly_low_mag_noise0_lt2 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=2 | PID 2084098 | GPU 1
+[2026-07-18T07:52:17] Started split_multichannel | split_multichannel_058_quarterly_low_mag_noise10_lt1 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=1 | PID 2084339 | GPU 1
+[2026-07-18T07:52:22] Started local_timemixer | local_timemixer_020_yearly_high_mag_noise0_lt2 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=2 | PID 2084487 | GPU 1
+[2026-07-18T07:52:37] Finished local_patchtst | local_patchtst_095_half_quarterly_medium_mag_noise10_lt2 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=2
+[2026-07-18T07:52:40] Started split_multichannel | split_multichannel_087_half_quarterly_low_mag_noise10_lt3 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=3 | PID 2084934 | GPU 2
+[2026-07-18T07:53:04] Started split_timemixer | split_timemixer_030_half_yearly_low_mag_noise0_lt3 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=3 | PID 2085364 | GPU 2
+[2026-07-18T07:53:07] Started split_timemixer | split_timemixer_032_half_yearly_low_mag_noise10_lt2 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=2 | PID 2085371 | GPU 2
+[2026-07-18T07:53:20] Finished local_timemixer | local_timemixer_038_half_yearly_medium_mag_noise0_lt2 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=2
+[2026-07-18T07:53:33] Started split_patchtst | split_patchtst_014_yearly_medium_mag_noise10_lt2 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=2 | PID 2086119 | GPU 5
+[2026-07-18T07:53:39] Finished split_multichannel | split_multichannel_058_quarterly_low_mag_noise10_lt1 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=1
+[2026-07-18T07:53:53] Started split_patchtst | split_patchtst_063_quarterly_low_mag_noise100_lt3 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=3 | PID 2086714 | GPU 1
+[2026-07-18T07:54:14] Waiting for available CPU/GPU capacity. waiting=136, running=21
+[2026-07-18T07:54:15] Finished split_patchtst | split_patchtst_001_yearly_low_mag_noise0_lt1 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=1
+[2026-07-18T07:54:31] Waiting for available CPU/GPU capacity. waiting=136, running=20
+[2026-07-18T07:54:32] Finished split_multichannel | split_multichannel_045_half_yearly_medium_mag_noise100_lt3 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=3
+[2026-07-18T07:54:37] Started local_timemixer | local_timemixer_053_half_yearly_high_mag_noise100_lt2 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=2 | PID 2087736 | GPU 7
+[2026-07-18T07:54:48] Started local_patchtst | local_patchtst_097_half_quarterly_medium_mag_noise100_lt1 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=1 | PID 2087895 | GPU 5
+[2026-07-18T07:54:51] Started local_patchtst | local_patchtst_101_half_quarterly_high_mag_noise0_lt2 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=2 | PID 2087966 | GPU 5
+[2026-07-18T07:54:58] Finished local_patchtst | local_patchtst_020_yearly_high_mag_noise0_lt2 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=2
+[2026-07-18T07:55:14] Waiting for available CPU/GPU capacity. waiting=133, running=20
+[2026-07-18T07:55:15] Finished local_multichannel | local_multichannel_082_half_quarterly_low_mag_noise0_lt1 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=1
+[2026-07-18T07:55:30] Waiting for available CPU/GPU capacity. waiting=133, running=19
+[2026-07-18T07:55:43] Started local_patchtst | local_patchtst_063_quarterly_low_mag_noise100_lt3 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=3 | PID 2089401 | GPU 6
+[2026-07-18T07:55:46] Started local_patchtst | local_patchtst_064_quarterly_medium_mag_noise0_lt1 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=1 | PID 2089408 | GPU 6
+[2026-07-18T07:55:50] Started local_patchtst | local_patchtst_069_quarterly_medium_mag_noise10_lt3 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=3 | PID 2089416 | GPU 6
+[2026-07-18T07:55:57] Finished split_patchtst | split_patchtst_014_yearly_medium_mag_noise10_lt2 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=2
+[2026-07-18T07:55:58] Started split_multichannel | split_multichannel_032_half_yearly_low_mag_noise10_lt2 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=2 | PID 2089517 | GPU 5
+[2026-07-18T07:56:02] Started split_multichannel | split_multichannel_075_quarterly_high_mag_noise0_lt3 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=3 | PID 2089539 | GPU 1
+[2026-07-18T07:56:06] Started split_multichannel | split_multichannel_079_quarterly_high_mag_noise100_lt1 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=1 | PID 2089563 | GPU 7
+[2026-07-18T07:56:21] Finished split_patchtst | split_patchtst_063_quarterly_low_mag_noise100_lt3 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=3
+[2026-07-18T07:56:31] Started local_patchtst | local_patchtst_016_yearly_medium_mag_noise100_lt1 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=1 | PID 2090634 | GPU 5
+[2026-07-18T07:56:34] Started local_patchtst | local_patchtst_027_yearly_high_mag_noise100_lt3 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=3 | PID 2090649 | GPU 3
+[2026-07-18T07:56:37] Started local_patchtst | local_patchtst_030_half_yearly_low_mag_noise0_lt3 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=3 | PID 2090660 | GPU 3
+[2026-07-18T07:56:41] Started local_patchtst | local_patchtst_032_half_yearly_low_mag_noise10_lt2 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=2 | PID 2090668 | GPU 3
+[2026-07-18T07:56:49] Finished local_patchtst | local_patchtst_101_half_quarterly_high_mag_noise0_lt2 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=2
+[2026-07-18T07:56:54] Started local_timemixer | local_timemixer_069_quarterly_medium_mag_noise10_lt3 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=3 | PID 2090844 | GPU 7
+[2026-07-18T07:56:57] Started local_timemixer | local_timemixer_089_half_quarterly_low_mag_noise100_lt2 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=2 | PID 2090861 | GPU 5
+[2026-07-18T07:57:24] Waiting for available CPU/GPU capacity. waiting=121, running=22
+[2026-07-18T07:57:25] Finished split_multichannel | split_multichannel_056_quarterly_low_mag_noise0_lt2 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=2
+[2026-07-18T07:57:34] Started local_patchtst | local_patchtst_038_half_yearly_medium_mag_noise0_lt2 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=2 | PID 2092034 | GPU 6
+[2026-07-18T07:57:38] Started local_patchtst | local_patchtst_045_half_yearly_medium_mag_noise100_lt3 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=3 | PID 2092108 | GPU 1
+[2026-07-18T07:57:41] Started local_patchtst | local_patchtst_046_half_yearly_high_mag_noise0_lt1 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=1 | PID 2092157 | GPU 1
+[2026-07-18T07:57:44] Started local_patchtst | local_patchtst_051_half_yearly_high_mag_noise10_lt3 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=3 | PID 2092165 | GPU 0
+[2026-07-18T07:57:48] Started local_patchtst | local_patchtst_053_half_yearly_high_mag_noise100_lt2 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=2 | PID 2092173 | GPU 0
+[2026-07-18T07:57:51] Started local_patchtst | local_patchtst_056_quarterly_low_mag_noise0_lt2 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=2 | PID 2092181 | GPU 6
+[2026-07-18T07:57:58] Finished local_patchtst | local_patchtst_069_quarterly_medium_mag_noise10_lt3 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=3
+[2026-07-18T07:58:00] Started split_multichannel | split_multichannel_020_yearly_high_mag_noise0_lt2 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=2 | PID 2092278 | GPU 6
+[2026-07-18T07:58:18] Started local_timemixer | local_timemixer_008_yearly_low_mag_noise100_lt2 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=2 | PID 2092617 | GPU 0
+[2026-07-18T07:58:27] Started local_patchtst | local_patchtst_008_yearly_low_mag_noise100_lt2 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=2 | PID 2093022 | GPU 3
+[2026-07-18T07:58:31] Started local_patchtst | local_patchtst_012_yearly_medium_mag_noise0_lt3 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=3 | PID 2093029 | GPU 3
+[2026-07-18T07:58:38] Finished local_patchtst | local_patchtst_032_half_yearly_low_mag_noise10_lt2 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=2
+[2026-07-18T07:58:51] Waiting for available CPU/GPU capacity. waiting=111, running=21
+[2026-07-18T07:58:52] Finished local_patchtst | local_patchtst_016_yearly_medium_mag_noise100_lt1 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=1
+[2026-07-18T07:58:59] Started split_timemixer | split_timemixer_046_half_yearly_high_mag_noise0_lt1 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=1 | PID 2093790 | GPU 3
+[2026-07-18T07:59:08] Finished local_patchtst | local_patchtst_038_half_yearly_medium_mag_noise0_lt2 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=2
+[2026-07-18T07:59:17] Started local_patchtst | local_patchtst_006_yearly_low_mag_noise10_lt3 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=3 | PID 2094090 | GPU 5
+[2026-07-18T07:59:23] Started split_patchtst | split_patchtst_064_quarterly_medium_mag_noise0_lt1 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=1 | PID 2094360 | GPU 1
+[2026-07-18T07:59:26] Started split_patchtst | split_patchtst_069_quarterly_medium_mag_noise10_lt3 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=3 | PID 2094367 | GPU 6
+[2026-07-18T07:59:30] Started split_patchtst | split_patchtst_071_quarterly_medium_mag_noise100_lt2 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=2 | PID 2094485 | GPU 6
+[2026-07-18T07:59:34] Finished local_patchtst | local_patchtst_056_quarterly_low_mag_noise0_lt2 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=2
+[2026-07-18T07:59:46] Waiting for available CPU/GPU capacity. waiting=106, running=21
+[2026-07-18T07:59:58] Started split_patchtst | split_patchtst_034_half_yearly_low_mag_noise100_lt1 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=1 | PID 2094935 | GPU 1
+[2026-07-18T08:00:01] Started split_patchtst | split_patchtst_038_half_yearly_medium_mag_noise0_lt2 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=2 | PID 2095027 | GPU 1
+[2026-07-18T08:00:06] Started split_patchtst | split_patchtst_097_half_quarterly_medium_mag_noise100_lt1 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=1 | PID 2095664 | GPU 5
+[2026-07-18T08:00:09] Finished local_patchtst | local_patchtst_053_half_yearly_high_mag_noise100_lt2 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=2
+[2026-07-18T08:00:21] Waiting for available CPU/GPU capacity. waiting=103, running=20
+[2026-07-18T08:00:31] Started local_patchtst | local_patchtst_001_yearly_low_mag_noise0_lt1 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=1 | PID 2096530 | GPU 0
+[2026-07-18T08:00:38] Finished split_multichannel | split_multichannel_079_quarterly_high_mag_noise100_lt1 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=1
+[2026-07-18T08:00:50] Waiting for available CPU/GPU capacity. waiting=102, running=19
+[2026-07-18T08:00:59] Started split_timemixer | split_timemixer_103_half_quarterly_high_mag_noise10_lt1 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=1 | PID 2096963 | GPU 7
+[2026-07-18T08:01:05] Started split_patchtst | split_patchtst_040_half_yearly_medium_mag_noise10_lt1 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=1 | PID 2097009 | GPU 0
+[2026-07-18T08:01:09] Finished split_patchtst | split_patchtst_064_quarterly_medium_mag_noise0_lt1 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=1
+[2026-07-18T08:01:11] Started local_multichannel | local_multichannel_089_half_quarterly_low_mag_noise100_lt2 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=2 | PID 2097057 | GPU 6
+[2026-07-18T08:01:14] Started split_multichannel | split_multichannel_006_yearly_low_mag_noise10_lt3 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=3 | PID 2097071 | GPU 6
+[2026-07-18T08:01:28] Finished split_patchtst | split_patchtst_071_quarterly_medium_mag_noise100_lt2 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=2
+[2026-07-18T08:01:29] Started split_multichannel | split_multichannel_030_half_yearly_low_mag_noise0_lt3 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=3 | PID 2097791 | GPU 3
+[2026-07-18T08:01:38] Started split_timemixer | split_timemixer_093_half_quarterly_medium_mag_noise0_lt3 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=3 | PID 2098081 | GPU 1
+[2026-07-18T08:01:42] Started split_timemixer | split_timemixer_095_half_quarterly_medium_mag_noise10_lt2 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=2 | PID 2098090 | GPU 1
+[2026-07-18T08:01:45] Started split_timemixer | split_timemixer_097_half_quarterly_medium_mag_noise100_lt1 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=1 | PID 2098098 | GPU 4
+[2026-07-18T08:01:48] Started split_timemixer | split_timemixer_101_half_quarterly_high_mag_noise0_lt2 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=2 | PID 2098106 | GPU 4
+[2026-07-18T08:01:52] Started split_timemixer | split_timemixer_108_half_quarterly_high_mag_noise100_lt3 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=3 | PID 2098114 | GPU 6
+[2026-07-18T08:01:55] Started local_patchtst | local_patchtst_014_yearly_medium_mag_noise10_lt2 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=2 | PID 2098122 | GPU 6
+[2026-07-18T08:02:02] Finished split_patchtst | split_patchtst_038_half_yearly_medium_mag_noise0_lt2 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=2
+[2026-07-18T08:02:11] Started split_patchtst | split_patchtst_008_yearly_low_mag_noise100_lt2 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=2 | PID 2098363 | GPU 5
+[2026-07-18T08:02:14] Started split_patchtst | split_patchtst_016_yearly_medium_mag_noise100_lt1 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=1 | PID 2098370 | GPU 5
+[2026-07-18T08:02:19] Finished split_patchtst | split_patchtst_097_half_quarterly_medium_mag_noise100_lt1 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=1
+[2026-07-18T08:02:30] Waiting for available CPU/GPU capacity. waiting=89, running=19
+[2026-07-18T08:03:06] Finished local_timemixer | local_timemixer_008_yearly_low_mag_noise100_lt2 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=2
+[2026-07-18T08:03:12] Started split_timemixer | split_timemixer_020_yearly_high_mag_noise0_lt2 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=2 | PID 2099927 | GPU 3
+[2026-07-18T08:03:15] Started split_timemixer | split_timemixer_022_yearly_high_mag_noise10_lt1 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=1 | PID 2099934 | GPU 0
+[2026-07-18T08:03:19] Started split_timemixer | split_timemixer_027_yearly_high_mag_noise100_lt3 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=3 | PID 2099942 | GPU 0
+[2026-07-18T08:03:26] Finished split_patchtst | split_patchtst_040_half_yearly_medium_mag_noise10_lt1 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=1
+[2026-07-18T08:03:37] Waiting for available CPU/GPU capacity. waiting=86, running=19
+[2026-07-18T08:03:38] Started local_multichannel | local_multichannel_087_half_quarterly_low_mag_noise10_lt3 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=3 | PID 2100557 | GPU 5
+[2026-07-18T08:03:42] Started split_multichannel | split_multichannel_008_yearly_low_mag_noise100_lt2 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=2 | PID 2100573 | GPU 5
+[2026-07-18T08:03:45] Started split_multichannel | split_multichannel_012_yearly_medium_mag_noise0_lt3 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=3 | PID 2100581 | GPU 2
+[2026-07-18T08:03:48] Started split_multichannel | split_multichannel_014_yearly_medium_mag_noise10_lt2 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=2 | PID 2100589 | GPU 2
+[2026-07-18T08:03:52] Started split_multichannel | split_multichannel_016_yearly_medium_mag_noise100_lt1 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=1 | PID 2100651 | GPU 2
+[2026-07-18T08:03:55] Started split_multichannel | split_multichannel_022_yearly_high_mag_noise10_lt1 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=1 | PID 2100720 | GPU 5
+[2026-07-18T08:04:08] Finished split_patchtst | split_patchtst_016_yearly_medium_mag_noise100_lt1 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=1
+[2026-07-18T08:04:17] Waiting for available CPU/GPU capacity. waiting=80, running=20
+[2026-07-18T08:04:40] Finished local_multichannel | local_multichannel_089_half_quarterly_low_mag_noise100_lt2 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=2
+[2026-07-18T08:04:40] Started split_multichannel | split_multichannel_038_half_yearly_medium_mag_noise0_lt2 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=2 | PID 2101937 | GPU 2
+[2026-07-18T08:04:44] Started split_multichannel | split_multichannel_046_half_yearly_high_mag_noise0_lt1 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=1 | PID 2101970 | GPU 2
+[2026-07-18T08:04:52] Started split_timemixer | split_timemixer_064_quarterly_medium_mag_noise0_lt1 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=1 | PID 2102067 | GPU 5
+[2026-07-18T08:04:55] Started split_timemixer | split_timemixer_077_quarterly_high_mag_noise10_lt2 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=2 | PID 2102074 | GPU 5
+[2026-07-18T08:05:03] Finished split_multichannel | split_multichannel_022_yearly_high_mag_noise10_lt1 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=1
+[2026-07-18T08:05:12] Waiting for available CPU/GPU capacity. waiting=76, running=21
+[2026-07-18T08:05:13] Finished split_multichannel | split_multichannel_016_yearly_medium_mag_noise100_lt1 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=1
+[2026-07-18T08:05:23] Waiting for available CPU/GPU capacity. waiting=76, running=20
+[2026-07-18T08:05:24] Finished local_patchtst | local_patchtst_014_yearly_medium_mag_noise10_lt2 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=2
+[2026-07-18T08:05:33] Waiting for available CPU/GPU capacity. waiting=76, running=19
+[2026-07-18T08:05:34] Finished split_multichannel | split_multichannel_030_half_yearly_low_mag_noise0_lt3 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=3
+[2026-07-18T08:05:38] Started local_timemixer | local_timemixer_103_half_quarterly_high_mag_noise10_lt1 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=1 | PID 2103236 | GPU 2
+[2026-07-18T08:05:42] Started local_timemixer | local_timemixer_108_half_quarterly_high_mag_noise100_lt3 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=3 | PID 2103263 | GPU 2
+[2026-07-18T08:05:49] Finished split_multichannel | split_multichannel_038_half_yearly_medium_mag_noise0_lt2 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=2
+[2026-07-18T08:05:58] Waiting for available CPU/GPU capacity. waiting=74, running=19
+[2026-07-18T08:06:21] Started split_multichannel | split_multichannel_093_half_quarterly_medium_mag_noise0_lt3 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=3 | PID 2103979 | GPU 6
+[2026-07-18T08:06:30] Started split_patchtst | split_patchtst_006_yearly_low_mag_noise10_lt3 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=3 | PID 2104436 | GPU 7
+[2026-07-18T08:06:33] Started split_patchtst | split_patchtst_027_yearly_high_mag_noise100_lt3 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=3 | PID 2104512 | GPU 7
+[2026-07-18T08:06:36] Started split_patchtst | split_patchtst_030_half_yearly_low_mag_noise0_lt3 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=3 | PID 2104596 | GPU 7
+[2026-07-18T08:06:41] Finished split_multichannel | split_multichannel_006_yearly_low_mag_noise10_lt3 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=3
+[2026-07-18T08:06:50] Waiting for available CPU/GPU capacity. waiting=70, running=20
+[2026-07-18T08:08:27] Finished split_multichannel | split_multichannel_012_yearly_medium_mag_noise0_lt3 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=3
+[2026-07-18T08:08:29] Started split_multichannel | split_multichannel_103_half_quarterly_high_mag_noise10_lt1 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=1 | PID 2107331 | GPU 7
+[2026-07-18T08:08:32] Started split_multichannel | split_multichannel_108_half_quarterly_high_mag_noise100_lt3 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=3 | PID 2107338 | GPU 7
+[2026-07-18T08:08:42] Finished split_patchtst | split_patchtst_030_half_yearly_low_mag_noise0_lt3 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=3
+[2026-07-18T08:08:43] Started split_multichannel | split_multichannel_053_half_yearly_high_mag_noise100_lt2 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=2 | PID 2107479 | GPU 7
+[2026-07-18T08:08:46] Started split_multichannel | split_multichannel_069_quarterly_medium_mag_noise10_lt3 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=3 | PID 2107486 | GPU 7
+[2026-07-18T08:08:57] Finished split_multichannel | split_multichannel_046_half_yearly_high_mag_noise0_lt1 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=1
+[2026-07-18T08:09:05] Waiting for available CPU/GPU capacity. waiting=66, running=17
+[2026-07-18T08:09:08] Started local_timemixer | local_timemixer_027_yearly_high_mag_noise100_lt3 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=3 | PID 2108141 | GPU 6
+[2026-07-18T08:09:11] Started local_timemixer | local_timemixer_030_half_yearly_low_mag_noise0_lt3 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=3 | PID 2108222 | GPU 6
+[2026-07-18T08:09:21] Finished split_timemixer | split_timemixer_108_half_quarterly_high_mag_noise100_lt3 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=3
+[2026-07-18T08:09:28] Waiting for available CPU/GPU capacity. waiting=64, running=18
+[2026-07-18T08:09:54] Started split_patchtst | split_patchtst_103_half_quarterly_high_mag_noise10_lt1 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=1 | PID 2109128 | GPU 3
+[2026-07-18T08:09:58] Finished split_timemixer | split_timemixer_097_half_quarterly_medium_mag_noise100_lt1 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=1
+[2026-07-18T08:09:58] Started split_multichannel | split_multichannel_071_quarterly_medium_mag_noise100_lt2 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=2 | PID 2109244 | GPU 3
+[2026-07-18T08:10:02] Started split_multichannel | split_multichannel_082_half_quarterly_low_mag_noise0_lt1 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=1 | PID 2109275 | GPU 3
+[2026-07-18T08:10:12] Finished split_timemixer | split_timemixer_020_yearly_high_mag_noise0_lt2 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=2
+[2026-07-18T08:10:19] Waiting for available CPU/GPU capacity. waiting=61, running=19
+[2026-07-18T08:10:56] Started local_timemixer | local_timemixer_051_half_yearly_high_mag_noise10_lt3 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=3 | PID 2110648 | GPU 4
+[2026-07-18T08:11:00] Started local_timemixer | local_timemixer_056_quarterly_low_mag_noise0_lt2 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=2 | PID 2110740 | GPU 4
+[2026-07-18T08:11:08] Finished split_timemixer | split_timemixer_101_half_quarterly_high_mag_noise0_lt2 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=2
+[2026-07-18T08:11:16] Waiting for available CPU/GPU capacity. waiting=59, running=20
+[2026-07-18T08:11:17] Finished split_multichannel | split_multichannel_082_half_quarterly_low_mag_noise0_lt1 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=1
+[2026-07-18T08:11:20] Started local_timemixer | local_timemixer_097_half_quarterly_medium_mag_noise100_lt1 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=1 | PID 2111101 | GPU 3
+[2026-07-18T08:11:23] Started local_timemixer | local_timemixer_101_half_quarterly_high_mag_noise0_lt2 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=2 | PID 2111108 | GPU 3
+[2026-07-18T08:11:26] Started split_timemixer | split_timemixer_001_yearly_low_mag_noise0_lt1 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=1 | PID 2111116 | GPU 1
+[2026-07-18T08:11:30] Started split_timemixer | split_timemixer_034_half_yearly_low_mag_noise100_lt1 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=1 | PID 2111305 | GPU 1
+[2026-07-18T08:11:37] Finished split_patchtst | split_patchtst_103_half_quarterly_high_mag_noise10_lt1 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=1
+[2026-07-18T08:11:43] Waiting for available CPU/GPU capacity. waiting=55, running=18
+[2026-07-18T08:11:52] Finished local_timemixer | local_timemixer_103_half_quarterly_high_mag_noise10_lt1 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=1
+[2026-07-18T08:11:59] Waiting for available CPU/GPU capacity. waiting=55, running=17
+[2026-07-18T08:12:00] Finished split_timemixer | split_timemixer_022_yearly_high_mag_noise10_lt1 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=1
+[2026-07-18T08:12:07] Waiting for available CPU/GPU capacity. waiting=55, running=16
+[2026-07-18T08:12:11] Started split_timemixer | split_timemixer_058_quarterly_low_mag_noise10_lt1 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=1 | PID 2112364 | GPU 7
+[2026-07-18T08:12:14] Started split_timemixer | split_timemixer_063_quarterly_low_mag_noise100_lt3 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=3 | PID 2112408 | GPU 7
+[2026-07-18T08:12:21] Finished split_multichannel | split_multichannel_108_half_quarterly_high_mag_noise100_lt3 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=3
+[2026-07-18T08:12:24] Started split_timemixer | split_timemixer_082_half_quarterly_low_mag_noise0_lt1 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=1 | PID 2112550 | GPU 2
+[2026-07-18T08:12:28] Started split_timemixer | split_timemixer_087_half_quarterly_low_mag_noise10_lt3 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=3 | PID 2112560 | GPU 2
+[2026-07-18T08:12:31] Started split_timemixer | split_timemixer_089_half_quarterly_low_mag_noise100_lt2 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=2 | PID 2112746 | GPU 2
+[2026-07-18T08:12:36] Started split_patchtst | split_patchtst_053_half_yearly_high_mag_noise100_lt2 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=2 | PID 2112790 | GPU 0
+[2026-07-18T08:12:39] Started split_patchtst | split_patchtst_056_quarterly_low_mag_noise0_lt2 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=2 | PID 2112798 | GPU 0
+[2026-07-18T08:12:42] Started split_patchtst | split_patchtst_058_quarterly_low_mag_noise10_lt1 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=1 | PID 2112808 | GPU 0
+[2026-07-18T08:12:46] Finished split_multichannel | split_multichannel_053_half_yearly_high_mag_noise100_lt2 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=2
+[2026-07-18T08:12:53] Waiting for available CPU/GPU capacity. waiting=47, running=20
+[2026-07-18T08:12:54] Finished split_multichannel | split_multichannel_069_quarterly_medium_mag_noise10_lt3 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=3
+[2026-07-18T08:13:00] Waiting for available CPU/GPU capacity. waiting=47, running=19
+[2026-07-18T08:14:01] Started local_patchtst | local_patchtst_089_half_quarterly_low_mag_noise100_lt2 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=2 | PID 2114571 | GPU 5
+[2026-07-18T08:14:05] Finished split_timemixer | split_timemixer_064_quarterly_medium_mag_noise0_lt1 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=1
+[2026-07-18T08:14:11] Waiting for available CPU/GPU capacity. waiting=46, running=19
+[2026-07-18T08:14:34] Started split_multichannel | split_multichannel_089_half_quarterly_low_mag_noise100_lt2 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=2 | PID 2115688 | GPU 0
+[2026-07-18T08:14:37] Started split_multichannel | split_multichannel_095_half_quarterly_medium_mag_noise10_lt2 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=2 | PID 2115695 | GPU 0
+[2026-07-18T08:14:45] Finished split_patchtst | split_patchtst_056_quarterly_low_mag_noise0_lt2 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=2
+[2026-07-18T08:14:51] Waiting for available CPU/GPU capacity. waiting=44, running=19
+[2026-07-18T08:14:59] Started split_multichannel | split_multichannel_097_half_quarterly_medium_mag_noise100_lt1 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=1 | PID 2115980 | GPU 5
+[2026-07-18T08:15:03] Started split_multichannel | split_multichannel_101_half_quarterly_high_mag_noise0_lt2 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=2 | PID 2116007 | GPU 5
+[2026-07-18T08:15:11] Finished split_multichannel | split_multichannel_071_quarterly_medium_mag_noise100_lt2 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=2
+[2026-07-18T08:15:16] Waiting for available CPU/GPU capacity. waiting=42, running=19
+[2026-07-18T08:15:43] Finished local_timemixer | local_timemixer_027_yearly_high_mag_noise100_lt3 | run_5 | freq=52 | noise=1 | magnitude=200 | lead_time=3
+[2026-07-18T08:15:47] Started local_patchtst | local_patchtst_103_half_quarterly_high_mag_noise10_lt1 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=1 | PID 2117295 | GPU 6
+[2026-07-18T08:15:50] Started local_patchtst | local_patchtst_108_half_quarterly_high_mag_noise100_lt3 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=3 | PID 2117306 | GPU 6
+[2026-07-18T08:15:54] Started split_patchtst | split_patchtst_032_half_yearly_low_mag_noise10_lt2 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=2 | PID 2117314 | GPU 5
+[2026-07-18T08:15:57] Started split_patchtst | split_patchtst_045_half_yearly_medium_mag_noise100_lt3 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=3 | PID 2117322 | GPU 5
+[2026-07-18T08:16:01] Finished split_multichannel | split_multichannel_097_half_quarterly_medium_mag_noise100_lt1 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=1
+[2026-07-18T08:16:06] Waiting for available CPU/GPU capacity. waiting=38, running=19
+[2026-07-18T08:16:20] Started local_timemixer | local_timemixer_001_yearly_low_mag_noise0_lt1 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=1 | PID 2117713 | GPU 0
+[2026-07-18T08:16:23] Started local_timemixer | local_timemixer_006_yearly_low_mag_noise10_lt3 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=3 | PID 2117720 | GPU 0
+[2026-07-18T08:16:31] Finished split_patchtst | split_patchtst_058_quarterly_low_mag_noise10_lt1 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=1
+[2026-07-18T08:16:35] Waiting for available CPU/GPU capacity. waiting=36, running=20
+[2026-07-18T08:16:45] Started split_timemixer | split_timemixer_053_half_yearly_high_mag_noise100_lt2 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=2 | PID 2118261 | GPU 6
+[2026-07-18T08:16:49] Started split_patchtst | split_patchtst_046_half_yearly_high_mag_noise0_lt1 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=1 | PID 2118368 | GPU 6
+[2026-07-18T08:16:58] Waiting for available CPU/GPU capacity. waiting=34, running=22
+[2026-07-18T08:16:59] Finished local_timemixer | local_timemixer_056_quarterly_low_mag_noise0_lt2 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=2
+[2026-07-18T08:17:03] Waiting for available CPU/GPU capacity. waiting=34, running=21
+[2026-07-18T08:17:05] Started local_timemixer | local_timemixer_012_yearly_medium_mag_noise0_lt3 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=3 | PID 2118763 | GPU 4
+[2026-07-18T08:17:08] Started local_timemixer | local_timemixer_016_yearly_medium_mag_noise100_lt1 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=1 | PID 2118796 | GPU 4
+[2026-07-18T08:17:16] Finished local_timemixer | local_timemixer_097_half_quarterly_medium_mag_noise100_lt1 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=1
+[2026-07-18T08:17:20] Waiting for available CPU/GPU capacity. waiting=32, running=21
+[2026-07-18T08:17:37] Finished split_patchtst | split_patchtst_032_half_yearly_low_mag_noise10_lt2 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=2
+[2026-07-18T08:17:37] Started local_timemixer | local_timemixer_034_half_yearly_low_mag_noise100_lt1 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=1 | PID 2119460 | GPU 5
+[2026-07-18T08:17:41] Started local_timemixer | local_timemixer_040_half_yearly_medium_mag_noise10_lt1 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=1 | PID 2119510 | GPU 3
+[2026-07-18T08:17:44] Started local_timemixer | local_timemixer_045_half_yearly_medium_mag_noise100_lt3 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=3 | PID 2119523 | GPU 3
+[2026-07-18T08:17:51] Finished split_patchtst | split_patchtst_045_half_yearly_medium_mag_noise100_lt3 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=3
+[2026-07-18T08:17:55] Waiting for available CPU/GPU capacity. waiting=29, running=20
+[2026-07-18T08:18:01] Finished local_patchtst | local_patchtst_108_half_quarterly_high_mag_noise100_lt3 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=3
+[2026-07-18T08:18:04] Started local_patchtst | local_patchtst_093_half_quarterly_medium_mag_noise0_lt3 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=3 | PID 2119839 | GPU 5
+[2026-07-18T08:18:12] Waiting for available CPU/GPU capacity. waiting=28, running=20
+[2026-07-18T08:19:24] Started split_patchtst | split_patchtst_082_half_quarterly_low_mag_noise0_lt1 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=1 | PID 2121720 | GPU 6
+[2026-07-18T08:19:28] Finished split_multichannel | split_multichannel_101_half_quarterly_high_mag_noise0_lt2 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=2
+[2026-07-18T08:19:32] Waiting for available CPU/GPU capacity. waiting=27, running=20
+[2026-07-18T08:19:33] Finished split_patchtst | split_patchtst_046_half_yearly_high_mag_noise0_lt1 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=1
+[2026-07-18T08:19:37] Waiting for available CPU/GPU capacity. waiting=27, running=19
+[2026-07-18T08:19:38] Finished split_multichannel | split_multichannel_089_half_quarterly_low_mag_noise100_lt2 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=2
+[2026-07-18T08:19:42] Waiting for available CPU/GPU capacity. waiting=27, running=18
+[2026-07-18T08:19:43] Finished split_timemixer | split_timemixer_001_yearly_low_mag_noise0_lt1 | run_5 | freq=52 | noise=1 | magnitude=50 | lead_time=1
+[2026-07-18T08:19:46] Waiting for available CPU/GPU capacity. waiting=27, running=17
+[2026-07-18T08:19:47] Finished split_multichannel | split_multichannel_095_half_quarterly_medium_mag_noise10_lt2 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=2
+[2026-07-18T08:19:51] Waiting for available CPU/GPU capacity. waiting=27, running=16
+[2026-07-18T08:20:18] Started local_patchtst | local_patchtst_034_half_yearly_low_mag_noise100_lt1 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=1 | PID 2122801 | GPU 5
+[2026-07-18T08:20:22] Started local_patchtst | local_patchtst_079_quarterly_high_mag_noise100_lt1 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=1 | PID 2122895 | GPU 1
+[2026-07-18T08:20:25] Started split_patchtst | split_patchtst_051_half_yearly_high_mag_noise10_lt3 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=3 | PID 2122934 | GPU 1
+[2026-07-18T08:20:28] Started split_patchtst | split_patchtst_077_quarterly_high_mag_noise10_lt2 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=2 | PID 2122942 | GPU 1
+[2026-07-18T08:20:32] Finished split_timemixer | split_timemixer_034_half_yearly_low_mag_noise100_lt1 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=1
+[2026-07-18T08:20:35] Waiting for available CPU/GPU capacity. waiting=23, running=19
+[2026-07-18T08:20:49] Finished local_patchtst | local_patchtst_093_half_quarterly_medium_mag_noise0_lt3 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=3
+[2026-07-18T08:20:52] Waiting for available CPU/GPU capacity. waiting=23, running=18
+[2026-07-18T08:21:34] Started split_timemixer | split_timemixer_079_quarterly_high_mag_noise100_lt1 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=1 | PID 2124392 | GPU 5
+[2026-07-18T08:21:37] Started local_patchtst | local_patchtst_058_quarterly_low_mag_noise10_lt1 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=1 | PID 2124577 | GPU 5
+[2026-07-18T08:21:41] Finished local_timemixer | local_timemixer_034_half_yearly_low_mag_noise100_lt1 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=1
+[2026-07-18T08:21:44] Waiting for available CPU/GPU capacity. waiting=21, running=19
+[2026-07-18T08:21:47] Started local_timemixer | local_timemixer_093_half_quarterly_medium_mag_noise0_lt3 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=3 | PID 2124668 | GPU 3
+[2026-07-18T08:21:54] Waiting for available CPU/GPU capacity. waiting=20, running=20
+[2026-07-18T08:21:59] Finished split_patchtst | split_patchtst_082_half_quarterly_low_mag_noise0_lt1 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=1
+[2026-07-18T08:22:02] Waiting for available CPU/GPU capacity. waiting=20, running=19
+[2026-07-18T08:22:03] Finished split_timemixer | split_timemixer_058_quarterly_low_mag_noise10_lt1 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=1
+[2026-07-18T08:22:06] Waiting for available CPU/GPU capacity. waiting=20, running=18
+[2026-07-18T08:22:08] Started local_timemixer | local_timemixer_046_half_yearly_high_mag_noise0_lt1 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=1 | PID 2125234 | GPU 7
+[2026-07-18T08:22:11] Started local_timemixer | local_timemixer_058_quarterly_low_mag_noise10_lt1 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=1 | PID 2125292 | GPU 7
+[2026-07-18T08:22:16] Finished split_timemixer | split_timemixer_063_quarterly_low_mag_noise100_lt3 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=3
+[2026-07-18T08:22:19] Waiting for available CPU/GPU capacity. waiting=18, running=19
+[2026-07-18T08:22:21] Started local_timemixer | local_timemixer_064_quarterly_medium_mag_noise0_lt1 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=1 | PID 2125420 | GPU 1
+[2026-07-18T08:22:24] Started local_timemixer | local_timemixer_071_quarterly_medium_mag_noise100_lt2 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=2 | PID 2125427 | GPU 1
+[2026-07-18T08:22:29] Finished split_patchtst | split_patchtst_077_quarterly_high_mag_noise10_lt2 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=2
+[2026-07-18T08:22:32] Waiting for available CPU/GPU capacity. waiting=16, running=16
+[2026-07-18T08:22:57] Finished local_patchtst | local_patchtst_034_half_yearly_low_mag_noise100_lt1 | run_5 | freq=26 | noise=1 | magnitude=50 | lead_time=1
+[2026-07-18T08:22:58] Started local_timemixer | local_timemixer_075_quarterly_high_mag_noise0_lt3 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=3 | PID 2135846 | GPU 6
+[2026-07-18T08:23:01] Started local_timemixer | local_timemixer_077_quarterly_high_mag_noise10_lt2 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=2 | PID 2135881 | GPU 0
+[2026-07-18T08:23:04] Started local_timemixer | local_timemixer_079_quarterly_high_mag_noise100_lt1 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=1 | PID 2135918 | GPU 4
+[2026-07-18T08:23:08] Started local_timemixer | local_timemixer_087_half_quarterly_low_mag_noise10_lt3 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=3 | PID 2135936 | GPU 4
+[2026-07-18T08:23:12] Finished local_timemixer | local_timemixer_012_yearly_medium_mag_noise0_lt3 | run_5 | freq=52 | noise=1 | magnitude=100 | lead_time=3
+[2026-07-18T08:23:14] Waiting for available CPU/GPU capacity. waiting=12, running=16
+[2026-07-18T08:23:23] Started split_patchtst | split_patchtst_101_half_quarterly_high_mag_noise0_lt2 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=2 | PID 2136366 | GPU 0
+[2026-07-18T08:23:28] Waiting for available CPU/GPU capacity. waiting=11, running=17
+[2026-07-18T08:23:30] Finished local_timemixer | local_timemixer_040_half_yearly_medium_mag_noise10_lt1 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=1
+[2026-07-18T08:23:31] Waiting for available CPU/GPU capacity. waiting=11, running=16
+[2026-07-18T08:23:40] Started split_patchtst | split_patchtst_095_half_quarterly_medium_mag_noise10_lt2 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=2 | PID 2136845 | GPU 6
+[2026-07-18T08:23:45] Waiting for available CPU/GPU capacity. waiting=10, running=17
+[2026-07-18T08:24:15] Started split_timemixer | split_timemixer_045_half_yearly_medium_mag_noise100_lt3 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=3 | PID 2137190 | GPU 0
+[2026-07-18T08:24:21] Waiting for available CPU/GPU capacity. waiting=9, running=18
+[2026-07-18T08:24:27] Finished local_patchtst | local_patchtst_058_quarterly_low_mag_noise10_lt1 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=1
+[2026-07-18T08:24:29] Waiting for available CPU/GPU capacity. waiting=9, running=17
+[2026-07-18T08:24:57] Finished local_timemixer | local_timemixer_045_half_yearly_medium_mag_noise100_lt3 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=3
+[2026-07-18T08:24:58] Waiting for available CPU/GPU capacity. waiting=9, running=16
+[2026-07-18T08:25:00] Finished split_timemixer | split_timemixer_082_half_quarterly_low_mag_noise0_lt1 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=1
+[2026-07-18T08:25:01] Started split_patchtst | split_patchtst_087_half_quarterly_low_mag_noise10_lt3 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=3 | PID 2138210 | GPU 3
+[2026-07-18T08:25:06] Waiting for available CPU/GPU capacity. waiting=8, running=16
+[2026-07-18T08:25:33] Finished split_patchtst | split_patchtst_095_half_quarterly_medium_mag_noise10_lt2 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=2
+[2026-07-18T08:25:35] Waiting for available CPU/GPU capacity. waiting=8, running=15
+[2026-07-18T08:26:07] Finished split_patchtst | split_patchtst_101_half_quarterly_high_mag_noise0_lt2 | run_5 | freq=7 | noise=1 | magnitude=200 | lead_time=2
+[2026-07-18T08:26:08] Waiting for available CPU/GPU capacity. waiting=8, running=14
+[2026-07-18T08:26:34] Started local_patchtst | local_patchtst_071_quarterly_medium_mag_noise100_lt2 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=2 | PID 2139677 | GPU 6
+[2026-07-18T08:26:39] Waiting for available CPU/GPU capacity. waiting=7, running=15
+[2026-07-18T08:26:48] Started local_timemixer | local_timemixer_095_half_quarterly_medium_mag_noise10_lt2 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=2 | PID 2140057 | GPU 5
+[2026-07-18T08:26:51] Started split_timemixer | split_timemixer_040_half_yearly_medium_mag_noise10_lt1 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=1 | PID 2140065 | GPU 2
+[2026-07-18T08:26:55] Started split_timemixer | split_timemixer_051_half_yearly_high_mag_noise10_lt3 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=3 | PID 2140073 | GPU 2
+[2026-07-18T08:26:58] Finished split_patchtst | split_patchtst_087_half_quarterly_low_mag_noise10_lt3 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=3
+[2026-07-18T08:26:59] Waiting for available CPU/GPU capacity. waiting=4, running=14
+[2026-07-18T08:27:29] Started local_patchtst | local_patchtst_077_quarterly_high_mag_noise10_lt2 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=2 | PID 2140674 | GPU 3
+[2026-07-18T08:27:33] Waiting for available CPU/GPU capacity. waiting=3, running=15
+[2026-07-18T08:27:35] Started local_patchtst | local_patchtst_075_quarterly_high_mag_noise0_lt3 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=3 | PID 2140706 | GPU 3
+[2026-07-18T08:27:38] Started split_patchtst | split_patchtst_079_quarterly_high_mag_noise100_lt1 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=1 | PID 2140988 | GPU 3
+[2026-07-18T08:27:42] Finished local_timemixer | local_timemixer_093_half_quarterly_medium_mag_noise0_lt3 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=3
+[2026-07-18T08:27:42] Waiting for available CPU/GPU capacity. waiting=1, running=16
+[2026-07-18T08:27:47] Finished local_timemixer | local_timemixer_058_quarterly_low_mag_noise10_lt1 | run_5 | freq=13 | noise=1 | magnitude=50 | lead_time=1
+[2026-07-18T08:27:48] Waiting for available CPU/GPU capacity. waiting=1, running=15
+[2026-07-18T08:27:52] Started split_patchtst | split_patchtst_089_half_quarterly_low_mag_noise100_lt2 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=2 | PID 2141046 | GPU 7
+[2026-07-18T08:27:55] Finished local_timemixer | local_timemixer_064_quarterly_medium_mag_noise0_lt1 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=1
+[2026-07-18T08:27:55] No pending jobs left. Waiting for 14 active process(es) to exit.
+[2026-07-18T08:28:19] Finished local_timemixer | local_timemixer_071_quarterly_medium_mag_noise100_lt2 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=2
+[2026-07-18T08:28:20] No pending jobs left. Waiting for 13 active process(es) to exit.
+[2026-07-18T08:28:22] Finished local_timemixer | local_timemixer_079_quarterly_high_mag_noise100_lt1 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=1
+[2026-07-18T08:28:23] No pending jobs left. Waiting for 12 active process(es) to exit.
+[2026-07-18T08:28:57] Finished local_patchtst | local_patchtst_071_quarterly_medium_mag_noise100_lt2 | run_5 | freq=13 | noise=1 | magnitude=100 | lead_time=2
+[2026-07-18T08:28:58] No pending jobs left. Waiting for 11 active process(es) to exit.
+[2026-07-18T08:29:04] Finished local_timemixer | local_timemixer_087_half_quarterly_low_mag_noise10_lt3 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=3
+[2026-07-18T08:29:04] No pending jobs left. Waiting for 10 active process(es) to exit.
+[2026-07-18T08:29:09] Finished split_patchtst | split_patchtst_089_half_quarterly_low_mag_noise100_lt2 | run_5 | freq=7 | noise=1 | magnitude=50 | lead_time=2
+[2026-07-18T08:29:10] No pending jobs left. Waiting for 9 active process(es) to exit.
+[2026-07-18T08:29:19] Finished split_patchtst | split_patchtst_079_quarterly_high_mag_noise100_lt1 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=1
+[2026-07-18T08:29:20] No pending jobs left. Waiting for 8 active process(es) to exit.
+[2026-07-18T08:29:28] Finished local_patchtst | local_patchtst_077_quarterly_high_mag_noise10_lt2 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=2
+[2026-07-18T08:29:29] No pending jobs left. Waiting for 7 active process(es) to exit.
+[2026-07-18T08:29:33] Finished local_patchtst | local_patchtst_075_quarterly_high_mag_noise0_lt3 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=3
+[2026-07-18T08:29:34] No pending jobs left. Waiting for 6 active process(es) to exit.
+[2026-07-18T08:29:56] Finished local_timemixer | local_timemixer_077_quarterly_high_mag_noise10_lt2 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=2
+[2026-07-18T08:29:57] No pending jobs left. Waiting for 5 active process(es) to exit.
+[2026-07-18T08:30:00] Finished local_timemixer | local_timemixer_095_half_quarterly_medium_mag_noise10_lt2 | run_5 | freq=7 | noise=1 | magnitude=100 | lead_time=2
+[2026-07-18T08:30:00] No pending jobs left. Waiting for 4 active process(es) to exit.
+[2026-07-18T08:31:59] Finished local_timemixer | local_timemixer_075_quarterly_high_mag_noise0_lt3 | run_5 | freq=13 | noise=1 | magnitude=200 | lead_time=3
+[2026-07-18T08:31:59] No pending jobs left. Waiting for 3 active process(es) to exit.
+[2026-07-18T08:32:02] Finished split_timemixer | split_timemixer_045_half_yearly_medium_mag_noise100_lt3 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=3
+[2026-07-18T08:32:03] No pending jobs left. Waiting for 2 active process(es) to exit.
+[2026-07-18T08:35:38] Finished split_timemixer | split_timemixer_040_half_yearly_medium_mag_noise10_lt1 | run_5 | freq=26 | noise=1 | magnitude=100 | lead_time=1
+[2026-07-18T08:35:39] No pending jobs left. Waiting for 1 active process(es) to exit.
+[2026-07-18T08:36:26] Finished split_timemixer | split_timemixer_051_half_yearly_high_mag_noise10_lt3 | run_5 | freq=26 | noise=1 | magnitude=200 | lead_time=3
+[2026-07-18T08:36:26] No pending jobs left. Waiting for 0 active process(es) to exit.
+[2026-07-18T08:36:28] All jobs finished.

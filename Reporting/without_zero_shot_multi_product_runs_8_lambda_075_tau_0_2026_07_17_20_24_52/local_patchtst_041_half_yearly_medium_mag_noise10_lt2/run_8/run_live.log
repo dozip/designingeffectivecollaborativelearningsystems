@@ -1,0 +1,16 @@
+==============================================================================================================
+[2026-07-17T20:37:55] START experiment=local_patchtst_041_half_yearly_medium_mag_noise10_lt2 run_8 pid=1383506 gpu=7 log=/home/zipperli/projects/designingeffectivecollaborativelearningsystems/Reporting/without_zero_shot_multi_product_runs_8_lambda_075_tau_0_2026_07_17_20_24_52/local_patchtst_041_half_yearly_medium_mag_noise10_lt2/run_8/run_live.log
+==============================================================================================================
+/home/zipperli/projects/designingeffectivecollaborativelearningsystems/ML_Backends/patchtst_local.py:247: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=int(n_layers))
+/home/zipperli/projects/designingeffectivecollaborativelearningsystems/helpers/helpers.py:801: UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow. Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor. (Triggered internally at /pytorch/torch/csrc/utils/tensor_new.cpp:253.)
+  return torch.tensor(X, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)
+/home/zipperli/projects/designingeffectivecollaborativelearningsystems/ML_Backends/patchtst_local.py:247: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=int(n_layers))
+/home/zipperli/projects/designingeffectivecollaborativelearningsystems/ML_Backends/patchtst_local.py:247: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=int(n_layers))
+/home/zipperli/projects/designingeffectivecollaborativelearningsystems/ML_Backends/patchtst_local.py:247: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=int(n_layers))
+==============================================================================================================
+[2026-07-17T20:39:05] END experiment=local_patchtst_041_half_yearly_medium_mag_noise10_lt2 run_8 pid=1383506 status=finished
+==============================================================================================================
