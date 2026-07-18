@@ -6,7 +6,7 @@
 # - Only Chronos_zero_shot and TimesFM_zero_shot experiments retained
 # =============================================================================
 sim:
-  simulation_runs: 5
+  simulation_runs: 10
   run_start_id: 0
   convergence_time: 2500
   simulation_time: 2500
@@ -53,8 +53,8 @@ market:
     - 0.1
     - 0.1
   factor_model:
-    lam: 1
-    tau: 2
+    lam: 0.75
+    tau: 0
     idio_noise_scale: 1.0
     shock_prob: 0.0
     shock_mag: 0.0

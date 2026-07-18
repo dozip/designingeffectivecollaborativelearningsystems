@@ -98,7 +98,13 @@ market:
   # Retailer-product shares, ordered as s = retailer * P + product.
   # With R=2 and P=3, the first three values belong to retailer 0 and the
   # final three to retailer 1. For each product, retailer shares sum to 1.
-  demand_split: [0.7, 0.7, 0.7, 0.3, 0.3, 0.3]
+  demand_split: # Retailer, Product
+    - 0.2333 # R1, P1 
+    - 0.2333 # R1, P2
+    - 0.2334 # R1, P3
+    - 0.1 # R2, P1
+    - 0.1 # R2, P2
+    - 0.1 # R2, P3
 
   # Optional multi-product dependency model:
   # factor_model:
