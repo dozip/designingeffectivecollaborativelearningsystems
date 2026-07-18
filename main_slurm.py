@@ -2417,11 +2417,13 @@ FULL_CONFIG_FILENAME = "combined_experiment_config_without_chronos_timesfm_runs1
 # FULL_CONFIG_FILENAME = "./missing_run_configs_6_lambda_1_tau_0/04_other_part_2_NORMALMODE_FIXED_V2.yaml"
 # FULL_CONFIG_FILENAME = "./missing_run_configs_6_lambda_1_tau_0/05_other_part_3_NORMALMODE_FIXED_V2.yaml"
 # FULL_CONFIG_FILENAME = "./missing_run_configs_6_lambda_1_tau_0/06_other_part_4_NORMALMODE_FIXED_V2.yaml"
+# FULL_CONFIG_FILENAME = "./missing_run_configs_6_lambda_1_tau_0/missing_runs_470_plus_6_manual_config.yaml"
 # FULL_CONFIG_FILENAME = "combined_experiment_config.yaml"
 # FULL_CONFIG_FILENAME = "combined_experiment_config_only_timesfm.yaml"
-FULL_CONFIG_FILENAME = "combined_experiment_config_without_chronos_timesfm.yaml"
+# FULL_CONFIG_FILENAME = "combined_experiment_config_without_chronos_timesfm.yaml"
 # FULL_CONFIG_FILENAME = "timesfm_failures_rerun.yaml"
 # FULL_CONFIG_FILENAME = "failed_runs_only.yaml"
+FULL_CONFIG_FILENAME = "./tinygpu_split_configs/experiments_configwithout_zero_shot_runs_5 _part_3_lambda_1_tau_0.yaml"
 
 # None means:
 #   - if USE_MISSING_CONFIG=True and missing_experiments.yaml contains
@@ -2445,7 +2447,7 @@ MAX_CPU_USAGE = 85.0
 MAX_RAM_USAGE = 85.0
 MAX_GPU_USAGE = 70.0
 MAX_GPU_MEMORY_USAGE = 0.85
-MAX_JOBS_PER_GPU = 4
+MAX_JOBS_PER_GPU = 5
 POLL_SECONDS = 1.0
 
 
