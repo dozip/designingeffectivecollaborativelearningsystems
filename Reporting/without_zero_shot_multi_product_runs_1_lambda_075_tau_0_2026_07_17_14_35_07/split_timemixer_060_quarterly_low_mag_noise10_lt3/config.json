@@ -1,0 +1,149 @@
+{
+  "sim": {
+    "simulation_runs": 1,
+    "run_start_id": 1,
+    "convergence_time": 2500,
+    "simulation_time": 2500,
+    "training_time": 1000,
+    "testing_time": 50,
+    "training_type": "split_timemixer",
+    "train_size": 1000,
+    "val_size": 100,
+    "epochs": 2000,
+    "learning_rate": 0.001,
+    "momentum": 0.9,
+    "batch_size": 128,
+    "sequence_length": 52
+  },
+  "early_stopping": {
+    "patience": 300,
+    "min_delta": 0.0
+  },
+  "market": {
+    "num_products": 3,
+    "primary_demand": 1000,
+    "trend_magnitude": 2,
+    "seasonality_magnitude": 50,
+    "seasonality_frequncy": 13,
+    "random_walk": {
+      "mean": 10,
+      "variance": 1
+    },
+    "demand_split": [
+      0.2333,
+      0.2333,
+      0.2334,
+      0.1,
+      0.1,
+      0.1
+    ],
+    "factor_model": {
+      "lam": 0.75,
+      "tau": 0,
+      "idio_noise_scale": 1.0,
+      "shock_prob": 0.0,
+      "shock_mag": 0.0,
+      "seed": 0
+    }
+  },
+  "supply_chain": {
+    "agents_per_level": [
+      2,
+      3
+    ],
+    "num_products": 3,
+    "product_to_manufacturer": {
+      "0": 0,
+      "1": 1,
+      "2": 2
+    },
+    "sc_levels": {
+      "sc_level_0": {
+        "adjaceny_list": [
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1
+          ]
+        ],
+        "lead_time": 3,
+        "replenishment_strat": [
+          "OUT",
+          "OUT"
+        ],
+        "forecasting_strat": [
+          "MA",
+          "MA"
+        ],
+        "inv_capacity": [
+          100000,
+          100000
+        ],
+        "init_inv": [
+          0,
+          0
+        ],
+        "safety_risk_factor": [
+          1,
+          1
+        ],
+        "R": [
+          1,
+          1
+        ]
+      },
+      "sc_level_1": {
+        "adjaceny_list": [
+          [
+            1
+          ],
+          [
+            1
+          ],
+          [
+            1
+          ]
+        ],
+        "lead_time": 3,
+        "replenishment_strat": [
+          "OUT",
+          "OUT",
+          "OUT"
+        ],
+        "forecasting_strat": [
+          "MA",
+          "MA",
+          "MA"
+        ],
+        "inv_capacity": [
+          100000,
+          100000,
+          100000
+        ],
+        "init_inv": [
+          0,
+          0,
+          0
+        ],
+        "safety_risk_factor": [
+          1,
+          1,
+          1
+        ],
+        "R": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  },
+  "meta": {
+    "experiment_name": "split_timemixer_060_quarterly_low_mag_noise10_lt3"
+  }
+}
