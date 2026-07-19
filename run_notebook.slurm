@@ -19,7 +19,7 @@ unset SLURM_EXPORT_ENV
 PROJECT_ROOT="/home/hpc/btr0/btr0106h/projects/designingeffectivecollaborativelearningsystems"
 # NOTEBOOK="$PROJECT_ROOT/evaluation_synthetic_data.ipynb"
 NOTEBOOK="$PROJECT_ROOT/market_configuration_paired_evaluation_all_metrics_repaired_export_lamda_075_tau_0.ipynb"
-NOTEBOOK="$PROJECT_ROOT/market_configuration_paired_evaluation_all_metrics_repaired_export_lamda_1_tau_0.ipynb"
+NOTEBOOK="$PROJECT_ROOT/market_configuration_paired_evaluation_all_metrics_results_folder_config.ipynb"
 EXECUTED_NOTEBOOK_DIR="$PROJECT_ROOT/Results/Executed_Notebooks"
 
 module purge
