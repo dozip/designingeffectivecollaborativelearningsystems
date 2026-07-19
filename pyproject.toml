@@ -3,20 +3,43 @@ name = "collaborative-learning-systems"
 version = "0.1.0"
 description = "Designing Effective Collaborative Learning Systems for Supply Chain Forecasting"
 requires-python = ">=3.11,<3.13"
+
 dependencies = [
-    "ipython>=8.12",
-    "matplotlib>=3.8",
-    "numpy>=1.26,<2",
-    "openpyxl>=3.1",
-    "pandas>=2.1",
-    "PyYAML>=6.0",
-    "scikit-learn>=1.6",
-    "scipy>=1.11",
-    "seaborn>=0.13",
-    "torch>=2.3",
-    "chronos-forecasting>=2.0",
-    "huggingface_hub",
-    "timesfm[torch] @ git+https://github.com/google-research/timesfm.git",
+    "ipython==9.14.1",
+    "matplotlib==3.11.0",
+    "numpy==2.5.0",
+    "openpyxl==3.1.5",
+    "pandas==3.0.3",
+    "PyYAML==6.0.3",
+    "scikit-learn==1.9.0",
+    "scipy==1.18.0",
+    "seaborn==0.13.2",
+    "psutil==7.2.2",
+    "threadpoolctl==3.6.0",
+
+    "torch==2.8.0+cu126",
+
+    "chronos-forecasting==2.3.1",
+    "accelerate==1.14.0",
+    "boto3==1.43.36",
+    "einops==0.8.2",
+    "transformers==4.57.6",
+
+    "timesfm[flax]==2.0.2",
+    "flax==0.12.7",
+    "optax==0.2.8",
+    "orbax-checkpoint==0.12.1",
+    "einshape==1.0",
+    "jaxtyping==0.3.11",
+
+    "jax[cuda12]==0.10.2",
+    "jaxlib==0.10.2",
+
+    "huggingface_hub==0.36.2",
+    "safetensors==0.8.0",
+    "tensorstore==0.1.84",
+    "ml_dtypes==0.5.4",
+    "opt_einsum==3.4.0",
 ]
 
 [project.scripts]
@@ -25,9 +48,6 @@ run-sim = "main:run"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[tool.hatch.metadata]
-allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 only-include = [
