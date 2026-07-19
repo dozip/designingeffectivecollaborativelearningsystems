@@ -68,11 +68,14 @@ def _cfg_get_early_stopping(cfg, key, default):
 
 
 def _snapshot_split_lstm(agent_models, scaler_list, server_model=None):
-    """Store only trainable state for early stopping.
+    """Capture the complete split-LSTM state for early stopping.
 
-    The current split LSTM has no trainable server module; server is kept as
-    an explicit key so this snapshot remains compatible with a future trainable
-    server component.
+    Stores deep copies of each agent's LSTM and dense-head parameters,
+    the shared trainable server parameters (if provided), the channel-to-
+    dataloader mappings, and the fitted scalers.
+
+    The returned snapshot can be restored with
+    ``_restore_split_lstm_snapshot``.
     """
     return {
         "agents": {

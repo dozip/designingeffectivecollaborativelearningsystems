@@ -8,10 +8,14 @@ import numpy as np
 
 
 class Net(nn.Sequential):
-    """_summary_
+    """Fully connected regression network.
+
+    The network maps ``num_features`` input features through hidden
+    layers of sizes 48, 24, 12, and 4 to one scalar output.
 
     Args:
-        nn (_type_): parent class
+        num_features:
+            Number of features in the last dimension of the input tensor.
     """
 
     def __init__(self, num_features) -> None:
@@ -31,7 +35,7 @@ class Net(nn.Sequential):
         return z
 
 
-## for federated learning
+# Generic PyTorch training and evaluation helpers for regression models.
 def train(net: Net, trainloader, optimizer, epochs, deivce: str):
     criterion = torch.nn.MSELoss()
     net.train()
@@ -66,10 +70,15 @@ def test(net: Net, testloader: DataLoader, device: str):
 
 ### Models for Split Learning
 class NetLocal1(nn.Sequential):
-    """_summary_
+    """Client-side feature extractor for the split-learning architecture.
+
+    The network maps ``num_features`` input features through two
+    batch-normalized hidden layers and produces a 24-dimensional
+    intermediate representation for the server model.
 
     Args:
-        nn (_type_): parent class
+        num_features:
+            Number of features in the last dimension of the input tensor.
     """
 
     def __init__(self, num_features:int) -> None:
@@ -87,10 +96,11 @@ class NetLocal1(nn.Sequential):
         return z
     
 class NetServerModel(nn.Sequential):
-    """_summary_
+    """Server-side transformation for the split-learning architecture.
 
-    Args:
-        nn (_type_): parent class
+    The model receives a 24-dimensional client representation, transforms
+    it through batch-normalized hidden layers of sizes 144 and 80, and
+    returns another 24-dimensional representation.
     """
 
     def __init__(self) -> None:
@@ -108,11 +118,14 @@ class NetServerModel(nn.Sequential):
         return z
 
 # class NetLocal2(nn.Sequential):
-#     """_summary_
+#     """Linear client-side prediction head.
 
-#     Args:
-#         nn (_type_): parent class
-#     """
+    # Args:
+    #     n_input:
+    #         Number of features in the incoming representation.
+    #     n_output:
+    #         Number of prediction features produced by the linear layer.
+    # """
 
 
 #     def __init__(self, num_target: int) -> None:
@@ -139,10 +152,13 @@ class NetServerModel(nn.Sequential):
 #         return z
 
 class NetLocal2(nn.Sequential):
-    """_summary_
+    """Linear client-side prediction head.
 
     Args:
-        nn (_type_): parent class
+        n_input:
+            Number of features in the incoming representation.
+        n_output:
+            Number of prediction features produced by the linear layer.
     """
 
     def __init__(self, n_input, n_output) -> None:
@@ -155,6 +171,21 @@ class NetLocal2(nn.Sequential):
         return z
     
 class LSTM_Model(nn.Sequential):
+    """Single-layer, batch-first LSTM feature extractor.
+
+    The model returns the complete sequence of hidden states. Consequently,
+    the output feature dimension equals ``n_hidden``.
+
+    Args:
+        n_input:
+            Number of features per input time step.
+        n_output:
+            Retained for compatibility with existing constructor calls.
+            This parameter is currently not used by the implementation.
+        n_hidden:
+            Number of LSTM hidden features and therefore the size of the
+            last dimension of the returned tensor.
+    """
 
     def __init__(self, n_input, n_output, n_hidden):
         super(LSTM_Model, self).__init__()
@@ -166,10 +197,13 @@ class LSTM_Model(nn.Sequential):
         return x
 
 class Dense(nn.Sequential):
-    """_summary_
+    """Single linear projection layer.
 
     Args:
-        nn (_type_): parent class
+        n_input:
+            Number of input features.
+        n_output:
+            Number of output features.
     """
 
     def __init__(self, n_input, n_output) -> None:

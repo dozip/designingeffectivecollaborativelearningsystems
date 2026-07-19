@@ -80,10 +80,15 @@ def _restore_local_lstm_snapshot(snapshot, lstm_models, dense_models):
 
 @register_backend("local_multichannel")
 class LSTMLocalBackend(ForecastingBackend):
-    """Per-agent multi-channel LSTM, trained locally for each agent.
+    """Per-agent multi-channel LSTM trained locally for level-1 agents.
 
-    Inference uses the vanilla per-agent loop: each agent's trained
-    ``MultiChannel_LSTM`` is attached and queried through ``agent.act``.
+        Each agent at supply-chain level 1 receives and trains its own LSTM
+        feature extractors and dense prediction heads. No model parameters are
+        shared between agents during training.
+
+        Inference uses the standard per-agent execution path: each trained
+        ``MultiChannel_LSTM`` is attached to its level-1 agent and queried
+        through ``agent.act``.
     """
 
     name = "local_multichannel"
@@ -103,7 +108,7 @@ def _local_training_multichannel_lstm(simulation, market, supply_chain, sc_agent
     val_loss_list = []
     channel_fusion = resolve_local_channel_fusion(cfg, "lstm")
 
-    for i, agent in enumerate(sc_agent_list[1]):  # change 1 to variable for dynamics
+    for i, agent in enumerate(sc_agent_list[1]):  # This backend currently trains only agents at supply-chain level 1.
         logger.info(f"Training agent: {i} (local_channel_fusion={channel_fusion})")
 
         val_loss_agent = []

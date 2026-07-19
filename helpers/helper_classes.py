@@ -99,10 +99,15 @@ class Forecasting():
 
 ### Moving Avaerga
 class MA(Forecasting):
-    """Use Moving Average for demand forecasting
+    """Parameter-free moving-average forecaster.
+
+    For every input demand channel, the forecaster returns the rounded
+    arithmetic mean of at most the first ``t`` values supplied for that
+    channel. The class requires no fitting or parameter optimization.
 
     Args:
-        Forecasting (_type_): parent class
+        t:
+            Maximum number of observations considered per channel.
     """
 
     def __init__(self, t: int = 100) -> None:
@@ -111,18 +116,21 @@ class MA(Forecasting):
         self.model_type = "MA"
         self.t = t
 
-    # training is not recessary
+    # Moving average is parameter-free; no training step is required.
     def train(self, data: np.ndarray) -> None:
         pass
 
     def predict(self, data: np.array) -> int:
-        """Computes the average of the input data
+        """Compute one rounded moving-average forecast per input channel.
 
         Args:
-            demand_data (np.array): demand data
+            data:
+                Iterable of one-dimensional demand histories. Each element
+                represents the history of one forecasting channel.
 
         Returns:
-            int: _description_
+            list[float]:
+                One rounded arithmetic-mean forecast for each input channel.
         """
 
         d_est = []
@@ -325,7 +333,7 @@ class DataCollector():
 
     def return_regression_dataset(self) -> RegressionDataset:
 
-        X, y = self.return_data()
+        X, y, _= self.return_data()
         sample = RegressionDataset(X, y)
 
         return sample

@@ -1,40 +1,78 @@
 # Designing Effective Collaborative Learning Systems: Demand Forecasting in Supply Chains Using Distributed Data
 
-This code is part of the paper ***Designing Effective Collaborative Learning Systems: Demand Forecasting in Supply Chains Using Distributed Data*** which is currently under review.
+This repository contains the code used for the paper *Designing Effective Collaborative Learning Systems: Demand Forecasting in Supply Chains Using Distributed Data*, which is currently under review.
 
 ## Setup
-To run the code, please follow the following instruction:
-1. The simulation was run using python 3.9.6
-2. Use the _requirements.txt_ to install necessary packages
-3. Install _jupyter-notebook_
-4. Usage of NVIDA GPUs is possible, if necessary packages are installed.
 
-### Configuration
-The code can be configured using the _config.yaml_ file. Here the possible parameters can be set. The most important parameters described below. For all other parameters please refer to the paper or config-file.
+The experiments were conducted using Python 3.9.6.
 
-### Training_type:
-Sets the typ of training. 
-- None: a moving average forecasting is used
-- loca_multichannel: training of the architecture is done locally
- split_multichannel: training of the architecture is done collaboratively
+1. Create a Python environment.
+2. Install the required packages:
 
- ### Data_scource:
- Here, we define how to simulate the market data. If _None_ is given, synthetic market data is generated based on the defined parameters. If a path is given, the data from that path is given. You can use the _FoodManuData1993_2024.xlsx_ as blue print for how to format your data. 
-
- ### Running the Code
- After isntalling all necessary packages and defining all parameters using the config-file, the simualtion can be started by running:
- ```bash
-python main.py
-```
-
-The result will be saved in the *Reporting-Folder*. The results raw data of the paper can be found in the folder *Results*
-
-## Results of our study
-We analyzed the resutls using a juypter-note book (see name below). Make sure that you can run juypter-notebooks.
 ```bash
-evaluation_itegrated_Experiment.ipynb
+pip install -r requirements.txt
 ```
 
-The raw data can be found in the folder ***Results/Rawdata/***. Experiments I to III are the results of the synthethic data for leadtime 1 to 3. Eval_Realdworld I to III are the results using real world data and leadtimes 1 to 3.
+3. Install Jupyter Notebook to run the evaluation notebook.
+4. For GPU execution, install the required CUDA-compatible versions of the machine-learning libraries.
 
-The evaulation can be found in the folder ***Results/Evaluation/***. 
+## Configuration
+
+The experiments are configured using the YAML configuration files in the repository, including:
+
+- `combined_experiment_config.yaml` for synthetic experiments
+- `combined_experiment_config_REALWORLD.yaml` for real-world experiments
+
+The configuration files define the forecasting approach, simulation parameters, market configuration, supply-chain structure, and number of runs.
+
+## Running the Experiments
+
+The experiment scheduler is implemented in `main_slurm.py`. Before starting an experiment, select the required experiment configuration in this file.
+
+For execution on locally available GPUs, the scheduler can be started with:
+
+```bash
+python main_slurm.py --gpu-allocation fixed --fixed-gpu-ids 0,1,2,3
+```
+
+The selected GPU IDs must match the GPUs available on the system.
+
+### Running on a Slurm GPU Cluster
+
+The file `main_slurm.slurm` provides an example Slurm submission script for running the experiments on multiple GPUs.
+
+Before submission, adapt the following values to the target cluster:
+
+- Slurm partition and requested GPU type
+- number of GPUs and CPUs
+- project directory
+- Python environment
+- job name and output paths
+
+Submit the job with:
+
+```bash
+sbatch main_slurm.slurm
+```
+
+The Slurm script starts `main_slurm.py` using the GPU allocation assigned by Slurm. Experiment outputs, scheduler logs, and per-run logs are written to the `Reporting/` directory.
+
+## Results
+
+The processed results used for the study are provided in the `Results/` directory:
+
+- `Results_real_world_data_multi_product.xlsx`
+- `Results_synthethic_multi_product_lambda_075_tau_0.xlsx`
+- `Results_synthethic_multi_product_lambda_075_tau_2.xlsx`
+- `Results_synthethic_multi_product_lambda_1_tau_0.xlsx`
+- `Results_synthethic_multi_product_lambda_1_tau_2.xlsx`
+
+The Excel files contain aggregated evaluation results and summary tables for the real-world and synthetic experiments. The values of `lambda` and `tau` in the filenames identify the respective synthetic market configuration.
+
+These Excel files are **not the raw simulation data**. The complete raw output of approximately 39,000 experimental runs requires too much storage to be included in this repository. Raw outputs are generated in the `Reporting/` directory when the experiments are executed.
+
+The aggregation and evaluation of the individual runs can be reproduced with:
+
+```text
+evaluation_notebook.ipynb
+```

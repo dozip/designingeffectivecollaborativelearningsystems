@@ -25,7 +25,7 @@ class Agent():
             adjacency_matrix (np.array): array containing all connection between agents of this level with the next one
             lead_time_matrix (np.array): array containing either all leadtimes for individual agent-agent connections with
                                         this and the nexxt level or one lead time for all connections
-            demand_hist_size (int): how many time steps should be considered for convergence phase and during training
+            training_time (int): number of historical time steps made available to the initial forecasting strategy during the convergence phase
             cfg (json): config file containing all additional configuration information of an agent
             num_products (int): number of distinct products in the market. Retailers hold
                 separate inventory / forecast / order per product; upstream agents each
@@ -855,15 +855,30 @@ class Agent():
         return demand_list
 
     def act(self, demand_t: int, sum_received_shipments_t: int) -> list:
-        """Based the current demand during time step t,
-        run through the agents actions and return the order size per supplier.
+        """Execute one simulation step using the agent's forecasting model.
 
-        Args:
-            demand_t (int): overall demand during time step t
+            The method records the current demand, receives shipments from the
+            agent's internal shipment queues, satisfies downstream demand,
+            computes replenishment orders, and routes those orders to upstream
+            suppliers.
 
-        Returns:
-            list: order size for each supplier of the next level
-        """
+            Args:
+                demand_t:
+                    Demand for the current time step. The value is normalized to
+                    one entry per downstream demand channel.
+                sum_received_shipments_t:
+                    Deprecated compatibility parameter. It is currently unused;
+                    incoming shipments are read from the agent's internal
+                    per-product shipment queues.
+
+            Returns:
+                tuple[list[float], numpy.ndarray]:
+                    A tuple containing:
+
+                    1. the order quantity addressed to each upstream supplier;
+                    2. the outgoing shipment quantity for each downstream demand
+                    channel.
+            """
         self.current_demand = self._as_vector(demand_t, name="demand_t")
         self.current_demand_sum = float(np.sum(self.current_demand))
 
@@ -875,14 +890,28 @@ class Agent():
         return self._split_orders(), self.own_shipments.copy()  # order for own supplier, and shipments to own retailer
 
     def act_multichannel(self, demand_t: int, sum_received_shipments_t: int, predictions) -> list:
-        """Based the current demand during time step t,
-        run through the agents actions and return the order size per supplier.
+        """Execute one simulation step using externally computed forecasts.
 
-        Args:
-            demand_t (int): overall demand during time step t
+            This follows the same inventory, sales, and shipment workflow as
+            ``act``, but uses the supplied per-channel predictions when computing
+            replenishment orders.
 
-        Returns:
-            list: order size for each supplier of the next level
+            Args:
+                demand_t:
+                    Demand for the current time step. The value is normalized to
+                    one entry per downstream demand channel.
+                sum_received_shipments_t:
+                    Deprecated compatibility parameter. It is currently unused;
+                    incoming shipments are read from the agent's internal
+                    per-product shipment queues.
+                predictions:
+                    Forecast value for each demand channel, supplied by the
+                    collaborative forecasting backend.
+
+            Returns:
+                tuple[list[float], numpy.ndarray]:
+                    A tuple containing the orders per upstream supplier and the
+                    outgoing shipments per downstream demand channel.
         """
         self.current_demand = self._as_vector(demand_t, name="demand_t")
         self.current_demand_sum = float(np.sum(self.current_demand))

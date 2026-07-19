@@ -25,10 +25,16 @@ logger = logging.getLogger('example_logger')
 
 
 def _is_per_agent_val_loss(val_loss) -> bool:
-    """True iff val_loss is a 2D structure (per-agent histories).
+    """Return whether validation loss contains multiple nested histories.
 
-    Local backends with per-agent EarlyStopping return List[List[float]];
-    split / single-trajectory backends return List[float].
+    A nested iterable, such as ``List[List[float]]``, is interpreted as
+    separate validation-loss histories, typically one history per agent.
+    A flat iterable, such as ``List[float]`` or a one-dimensional NumPy
+    array, is interpreted as one aggregated or shared loss trajectory.
+
+    The decision is based only on the structure of ``val_loss`` and not
+    on the backend name, because not every local backend returns nested
+    per-agent histories.
     """
     if val_loss is None:
         return False

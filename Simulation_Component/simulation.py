@@ -5,7 +5,15 @@ from .supply_chain import *
 
 
 class Simulation():
-    """Class for simulation. Has all important parameters and checks feasibility
+    """Container for simulation timing and training configuration.
+
+    For simulations without model training, the class validates only that
+    ``sim_time`` is positive. For simulations with model training, it
+    currently validates only that ``retraining_time`` is shorter than
+    ``sim_time``.
+
+    The class does not perform a complete feasibility or consistency
+    validation of all timing and dataset-size parameters.
     """
 
     def __init__(self, T, sim_runs: int, sim_time: int, conv_time: int, retraining_time: int, testing_time: int, training_type: str,
@@ -28,7 +36,7 @@ class Simulation():
     def __check_sim(self):
         
 
-        assert (self.retraining_time < self.sim_time)  # check if convergence is smaller than over all simulation time
+        assert (self.retraining_time < self.sim_time)  # The retraining window must be shorter than the simulation horizon.
 
     def run():
         raise NotImplementedError

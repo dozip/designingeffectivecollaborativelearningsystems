@@ -3,7 +3,7 @@ class Supply_Chain():
     """
 
     def __init__(self, adjacency_matrix, lead_time_matrix) -> None:
-        self.ajaceny_matrix = adjacency_matrix
+        self.adjaceny_matrix = adjacency_matrix
         self.lead_time_matrix = lead_time_matrix
 
     # SETTER
