@@ -1,0 +1,93 @@
+# Target:
+# - Python 3.12
+# - Linux x86_64
+# - NVIDIA RTX 3080
+# - NVIDIA driver compatible with CUDA 12.x
+#
+# Chronos runs through PyTorch on the GPU.
+# TimesFM runs through Flax/JAX on the GPU.
+#
+# Torch 2.8.0 + CUDA 12.6 is used instead of Torch 2.3.1 + CUDA 12.1
+# because the older Torch stack installs cuDNN 8.9, while JAX 0.10.2
+# requires a cuDNN 9.x stack.
+
+--extra-index-url https://download.pytorch.org/whl/cu126
+
+
+# =============================================================================
+# Notebook, data analysis and scheduler dependencies
+# =============================================================================
+
+ipython==9.14.1
+matplotlib==3.11.0
+numpy==2.5.0
+openpyxl==3.1.5
+pandas==3.0.3
+PyYAML==6.0.3
+scikit-learn==1.9.0
+scipy==1.18.0
+seaborn==0.13.2
+psutil==7.2.2
+threadpoolctl==3.6.0
+
+
+# =============================================================================
+# PyTorch with NVIDIA CUDA 12.6 support
+#
+# Required for:
+# - Chronos GPU inference
+# - project helper code
+# - model checkpointing
+# - other Torch-based forecasting backends
+# =============================================================================
+
+torch==2.8.0+cu126
+
+
+# =============================================================================
+# Chronos with GPU support through PyTorch
+#
+# Chronos 2.3.1 contains newer inference and preprocessing improvements and
+# avoids the old Chronos 2.0.0 DataLoader worker issue.
+# =============================================================================
+
+chronos-forecasting==2.3.1
+accelerate==1.14.0
+boto3==1.43.36
+einops==0.8.2
+transformers==4.57.6
+
+
+# =============================================================================
+# TimesFM 2.5 with Flax backend
+# =============================================================================
+
+timesfm[flax]==2.0.2
+
+flax==0.12.7
+optax==0.2.8
+orbax-checkpoint==0.12.1
+einshape==1.0
+jaxtyping==0.3.11
+
+
+# =============================================================================
+# JAX GPU support through CUDA 12
+#
+# JAX installs its CUDA plugin and any additional CUDA packages that are not
+# already provided by the compatible Torch CUDA 12.6 stack.
+# =============================================================================
+
+jax[cuda12]==0.10.2
+jaxlib==0.10.2
+
+
+# =============================================================================
+# Model, checkpoint and serialization dependencies
+# =============================================================================
+
+huggingface_hub==0.36.2
+safetensors==0.8.0
+tensorstore==0.1.84
+ml_dtypes==0.5.4
+opt_einsum==3.4.0
