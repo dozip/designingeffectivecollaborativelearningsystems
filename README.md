@@ -4,7 +4,7 @@ This repository contains the code used for the paper *Designing Effective Collab
 
 ## Setup
 
-The experiments were conducted using Python 3.9.6.
+The experiments were conducted using Python 3.12.9.
 
 1. Create a Python environment.
 2. Install the required packages:
@@ -56,6 +56,16 @@ sbatch main_slurm.slurm
 ```
 
 The Slurm script starts `main_slurm.py` using the GPU allocation assigned by Slurm. Experiment outputs, scheduler logs, and per-run logs are written to the `Reporting/` directory.
+
+## Real-World Data
+
+The real-world dataset used in the experiments is available in the `./data` directory.
+
+The data was extracted through the corresponding API using:
+
+```text
+get_data.py
+```
 
 ## Results
 
